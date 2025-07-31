@@ -27,8 +27,8 @@ training:
   device: "cuda:0"
   
   # Loss weights for ContraWiMAE
-  reconstruction_weight: 0.8
-  contrastive_weight: 0.2
+  reconstruction_weight: 0.9
+  contrastive_weight: 0.1
   
   # Optimization
   optimizer: "adam"  # Options: "adam", "adamw", "sgd"
