@@ -2,8 +2,8 @@
 
 # Model configuration
 model:
-  checkpoint_path: "checkpoints/model.pt"
-  device: "cuda"
+  checkpoint_path: "checkpoints/wimae/model.pt"
+  device: "cuda:0"
   pooling: "mean"  # Options: "mean", "cls", "max"
 
 # Task configuration
@@ -23,7 +23,7 @@ training:
   weight_decay: 1e-5
   epochs: 5000
   val_split: 0.2
-  test_split: 0.2
+  test_split: 0.1
   
   # Training budget (fraction of training data to use)
   training_budget: 1.0
@@ -51,11 +51,11 @@ data:
   embeddings_path: "embeddings/embeddings.pt"
   
   # For raw data
-  data_path: "path/to/data"
+  data_path: "data/test/channels.npz"
   data_format: "npz"
   
   # Labels
-  labels_path: "path/to/labels.pt"
+  labels_path: "data/test/bp_labels_28ghz.pt"
   label_type: "beam_prediction"  # Options: "beam_prediction", "los"
   
   # Data loading

@@ -47,11 +47,11 @@ training:
 
 # Data configuration
 data:
-  data_path: "path/to/data"
+  data_path: "data/pretrain"
   data_format: "npz"
   channels: 2  # Real and imaginary parts
-  height: 64
-  width: 64
+  height: 32
+  width: 32
   
   # Data loading
   num_workers: 4
@@ -72,10 +72,10 @@ logging:
 
 # Validation configuration
 validation:
-  val_interval: 1
-  val_batch_size: 256
+  val_interval: 10
+  val_batch_size: 768
   
 # Testing configuration
 testing:
-  test_batch_size: 256
+  test_batch_size: 768
   test_only: false 

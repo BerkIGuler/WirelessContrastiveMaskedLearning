@@ -1,8 +1,11 @@
 # do not ignore 
 !data/.gitkeep
+!checkpoints/.gitkeep
 
 # ignore data files
 data/
+checkpoints/
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

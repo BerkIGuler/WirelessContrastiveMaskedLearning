@@ -2,21 +2,21 @@
 
 # Model configuration
 model:
-  checkpoint_path: "checkpoints/model.pt"
+  checkpoint_path: "checkpoints/wimae/model.pt"
   device: "cuda"
   
   # Override model parameters if needed
-  patch_size: [4, 4]
-  encoder_dim: 256
+  patch_size: [1, 16]
+  encoder_dim: 64
   encoder_layers: 12
-  encoder_nhead: 8
-  decoder_layers: 8
+  encoder_nhead: 16
+  decoder_layers: 4
   decoder_nhead: 8
-  mask_ratio: 0.75
+  mask_ratio: 0.6
 
 # Encoding configuration
 encoding:
-  batch_size: 256
+  batch_size: 768
   num_workers: 4
   pin_memory: true
   
@@ -34,11 +34,11 @@ encoding:
   
   # Memory management
   use_gradient_checkpointing: false
-  use_amp: true
+  use_amp: false
 
 # Data configuration
 data:
-  data_path: "path/to/data"
+  data_path: "data/test/channels.npz"
   data_format: "npz"
   channels: 2
   height: 64
