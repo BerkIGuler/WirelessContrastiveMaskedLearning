@@ -1,0 +1,81 @@
+# Default training configuration for WiMAE and ContraWiMAE
+
+# Model configuration
+model:
+  type: "wimae"  # Options: "wimae", "contramae"
+  patch_size: [4, 4]
+  encoder_dim: 256
+  encoder_layers: 12
+  encoder_nhead: 8
+  decoder_layers: 8
+  decoder_nhead: 8
+  mask_ratio: 0.75
+  
+  # ContraWiMAE specific parameters
+  contrastive_dim: 256
+  temperature: 0.1
+  snr_min: 0.0
+  snr_max: 30.0
+
+# Training configuration
+training:
+  batch_size: 128
+  learning_rate: 0.0001
+  weight_decay: 1e-5
+  epochs: 100
+  val_split: 0.1
+  device: "cuda"
+  
+  # Loss weights for ContraWiMAE
+  reconstruction_weight: 1.0
+  contrastive_weight: 0.2
+  
+  # Optimization
+  optimizer: "adam"  # Options: "adam", "adamw", "sgd"
+  scheduler: "cosine"  # Options: "cosine", "step", "exponential", "plateau"
+  warmup_epochs: 10
+  
+  # Early stopping
+  early_stopping_patience: 20
+  early_stopping_min_delta: 1e-6
+  
+  # Gradient clipping
+  gradient_clip_val: 1.0
+  
+  # Mixed precision
+  use_amp: true
+
+# Data configuration
+data:
+  data_path: "path/to/data"
+  data_format: "npz"
+  channels: 2  # Real and imaginary parts
+  height: 64
+  width: 64
+  
+  # Data loading
+  num_workers: 4
+  pin_memory: true
+  persistent_workers: true
+
+# Logging configuration
+logging:
+  log_dir: "runs"
+  log_interval: 100
+  save_interval: 10
+  tensorboard: true
+  
+  # Checkpointing
+  save_best: true
+  save_last: true
+  max_checkpoints: 5
+
+# Validation configuration
+validation:
+  val_interval: 1
+  val_batch_size: 256
+  
+# Testing configuration
+testing:
+  test_batch_size: 256
+  test_only: false 
