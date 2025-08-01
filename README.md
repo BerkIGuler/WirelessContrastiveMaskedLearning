@@ -6,17 +6,17 @@ A PyTorch implementation of Wireless Masked Autoencoder (WiMAE) and Contrastive 
 
 ### Training with Optimized Data Loading
 
-The default training configuration now uses `OptimizedPreloadedDataset` for maximum training speed:
+The training pipeline uses `OptimizedPreloadedDataset` for maximum training speed:
 
 ```bash
 # Train with default configuration
-python examples/training_with_optimized_data.py --data-dir /path/to/your/npz/files
+python examples/training_example.py --data-dir /path/to/your/npz/files
 
 # Debug mode (small dataset for testing)
-python examples/training_with_optimized_data.py --data-dir /path/to/your/npz/files --debug
+python examples/training_example.py --data-dir /path/to/your/npz/files --debug
 
 # Use custom config
-python examples/training_with_optimized_data.py --config your_config.yaml --data-dir /path/to/your/npz/files
+python examples/training_example.py --config your_config.yaml --data-dir /path/to/your/npz/files
 ```
 
 ### Data Format
@@ -73,7 +73,7 @@ WirelessContrastiveMaskedLearning/
 │   ├── default_encoding.yaml   # Encoding config
 │   └── default_downstream.yaml # Downstream tasks config
 ├── examples/                   # Example scripts
-│   ├── training_with_optimized_data.py
+│   ├── training_example.py     # Training with optimized data loading
 │   ├── encoding_example.py
 │   └── downstream_example.py
 ├── wimae/                      # Main package
