@@ -3,14 +3,14 @@
 # Model configuration
 model:
   type: "contramae"  # Options: "wimae", "contramae"
-  patch_size: [4, 4]
-  encoder_dim: 128
-  encoder_layers: 4
-  encoder_nhead: 4
-  decoder_layers: 2
-  decoder_nhead: 4
-  mask_ratio: 0.75
-  contrastive_dim: 128
+  patch_size: [1, 16]
+  encoder_dim: 64
+  encoder_layers: 12
+  encoder_nhead: 16
+  decoder_layers: 4
+  decoder_nhead: 12
+  mask_ratio: 0.6
+  contrastive_dim: 64
   temperature: 0.1
   snr_min: 0.0
   snr_max: 30.0
