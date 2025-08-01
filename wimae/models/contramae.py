@@ -182,34 +182,20 @@ class ContraWiMAE(WiMAE):
             features1, features2, temperature
         )
     
-    def get_contrastive_embeddings(
-        self, 
-        x: torch.Tensor, 
-        pooling: str = "mean"
-    ) -> torch.Tensor:
+    def get_contrastive_embeddings(self, x: torch.Tensor) -> torch.Tensor:
         """
         Get contrastive embeddings from encoded features.
         
+        The contrastive head already performs mean pooling over patches.
+        
         Args:
             x: Input tensor
-            pooling: Pooling method
             
         Returns:
             Contrastive embeddings
         """
         encoded_features = self.encode(x)
-        contrastive_features = self.contrastive_head(encoded_features)
-        
-        if pooling == "mean":
-            embeddings = torch.mean(contrastive_features, dim=1)
-        elif pooling == "cls":
-            embeddings = contrastive_features[:, 0, :]
-        elif pooling == "max":
-            embeddings = torch.max(contrastive_features, dim=1)[0]
-        else:
-            raise ValueError(f"Unsupported pooling method: {pooling}")
-        
-        return embeddings
+        return self.contrastive_head(encoded_features)
     
     def save_checkpoint(self, filepath: str, **kwargs):
         """

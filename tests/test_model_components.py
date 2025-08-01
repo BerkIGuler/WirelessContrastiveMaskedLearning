@@ -30,8 +30,9 @@ class TestEncoder:
     @pytest.fixture
     def sample_patches(self):
         """Create sample patches for testing."""
-        batch_size = 4
-        num_patches = 64  # 32x2 patches
+        batch_size = 256
+        num_complex_patches = 64  # 32x2 complex patches
+        num_patches = num_complex_patches * 2  # 128 patches (real + imaginary parts)
         patch_dim = 16    # 1x16 patch
         return torch.randn(batch_size, num_patches, patch_dim)
     
@@ -130,17 +131,17 @@ class TestDecoder:
     @pytest.fixture
     def sample_encoded_features(self):
         """Create sample encoded features for testing."""
-        batch_size = 4
-        num_patches = 16  # Reduced for testing
+        batch_size = 256
+        num_patches = 128
         d_model = 64
         return torch.randn(batch_size, num_patches, d_model)
     
     @pytest.fixture
     def sample_ids_keep(self):
         """Create sample kept indices."""
-        batch_size = 4
-        num_kept = 16
-        return torch.randint(0, 64, (batch_size, num_kept))
+        batch_size = 256
+        num_kept = 128
+        return torch.randint(0, 128, (batch_size, num_kept))
     
     def test_decoder_initialization(self, decoder):
         """Test decoder initialization."""
@@ -151,7 +152,7 @@ class TestDecoder:
     
     def test_decoder_forward(self, decoder, sample_encoded_features, sample_ids_keep):
         """Test decoder forward pass."""
-        sequence_length = 64  # Original sequence length
+        sequence_length = 128  # Original sequence length
         
         output = decoder(sample_encoded_features, sample_ids_keep, sequence_length)
         
@@ -162,7 +163,7 @@ class TestDecoder:
     
     def test_decoder_reconstruction(self, decoder, sample_encoded_features, sample_ids_keep):
         """Test that decoder can reconstruct patches."""
-        sequence_length = 64
+        sequence_length = 128
         
         output = decoder(sample_encoded_features, sample_ids_keep, sequence_length)
         
@@ -175,7 +176,7 @@ class TestDecoder:
     
     def test_decoder_gradient_flow(self, decoder, sample_encoded_features, sample_ids_keep):
         """Test that gradients flow through the decoder."""
-        sequence_length = 64
+        sequence_length = 128
         
         output = decoder(sample_encoded_features, sample_ids_keep, sequence_length)
         
@@ -212,7 +213,7 @@ class TestWiMAE:
     @pytest.fixture
     def complex_input(self):
         """Create complex input tensor."""
-        batch_size = 4
+        batch_size = 256
         height, width = 32, 32
         real = torch.randn(batch_size, height, width)
         imag = torch.randn(batch_size, height, width)
@@ -242,7 +243,8 @@ class TestWiMAE:
         
         # Check shapes
         batch_size = complex_input.shape[0]
-        num_patches = (32 // 1) * (32 // 16)  # 32 * 2 = 64 patches
+        num_complex_patches = (32 // 1) * (32 // 16)  # 32 * 2 = 64 complex patches
+        num_patches = num_complex_patches * 2  # 128 patches (real + imaginary parts)
         expected_keep = int(num_patches * (1 - wimae_model.mask_ratio))
         
         assert output["encoded_features"].shape == (batch_size, expected_keep, wimae_model.encoder_dim)
@@ -264,7 +266,8 @@ class TestWiMAE:
         
         # Check output shape
         batch_size = complex_input.shape[0]
-        num_patches = (32 // 1) * (32 // 16)  # 32 * 2 = 64 patches
+        num_complex_patches = (32 // 1) * (32 // 16)  # 32 * 2 = 64 complex patches
+        num_patches = num_complex_patches * 2  # 128 patches (real + imaginary parts)
         
         assert encoded_features.shape == (batch_size, num_patches, wimae_model.encoder_dim)
     
@@ -274,14 +277,15 @@ class TestWiMAE:
         
         # Check output shape
         batch_size = complex_input.shape[0]
-        num_patches = (32 // 1) * (32 // 16)  # 32 * 2 = 64 patches
+        num_complex_patches = (32 // 1) * (32 // 16)  # 32 * 2 = 64 complex patches
+        num_patches = num_complex_patches * 2  # 128 patches (real + imaginary parts)
         
         assert reconstructed.shape == (batch_size, num_patches, 16)  # 1x16 patch
     
     def test_wimae_get_embeddings(self, wimae_model, complex_input):
         """Test WiMAE get_embeddings method."""
         # Test different pooling methods
-        pooling_methods = ["mean", "cls", "max"]
+        pooling_methods = ["mean", "max"]
         
         for pooling in pooling_methods:
             embeddings = wimae_model.get_embeddings(complex_input, pooling=pooling)
@@ -354,7 +358,7 @@ class TestContraWiMAE:
     @pytest.fixture
     def complex_input(self):
         """Create complex input tensor."""
-        batch_size = 4
+        batch_size = 256
         height, width = 32, 32
         real = torch.randn(batch_size, height, width)
         imag = torch.randn(batch_size, height, width)
@@ -435,15 +439,11 @@ class TestContraWiMAE:
     
     def test_contramae_get_contrastive_embeddings(self, contramae_model, complex_input):
         """Test ContraWiMAE get_contrastive_embeddings method."""
-        # Test different pooling methods
-        pooling_methods = ["mean", "cls", "max"]
+        embeddings = contramae_model.get_contrastive_embeddings(complex_input)
         
-        for pooling in pooling_methods:
-            embeddings = contramae_model.get_contrastive_embeddings(complex_input, pooling=pooling)
-            
-            # Check output shape
-            batch_size = complex_input.shape[0]
-            assert embeddings.shape == (batch_size, contramae_model.contrastive_dim)
+        # Check output shape
+        batch_size = complex_input.shape[0]
+        assert embeddings.shape == (batch_size, contramae_model.contrastive_dim)
     
     def test_contramae_save_load_checkpoint(self, contramae_model, complex_input, tmp_path):
         """Test ContraWiMAE checkpoint saving and loading."""

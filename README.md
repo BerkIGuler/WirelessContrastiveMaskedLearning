@@ -64,6 +64,102 @@ training:
 pip install -r requirements.txt
 ```
 
+## Testing
+
+The project includes comprehensive unit tests to ensure code quality and correctness. All tests are located in the `tests/` directory.
+
+### Running Tests
+
+```bash
+# Run all tests
+pytest
+
+# Run tests with verbose output
+pytest -v
+
+# Run tests with coverage report
+pytest --cov=wimae
+
+# Run specific test file
+pytest tests/test_models.py
+
+# Run specific test class
+pytest tests/test_model_components.py::TestWiMAE
+
+# Run specific test method
+pytest tests/test_model_components.py::TestWiMAE::test_wimae_forward
+
+# Run tests in parallel (faster)
+pytest -n auto
+
+# Run tests and generate HTML coverage report
+pytest --cov=wimae --cov-report=html
+```
+
+### Test Categories
+
+The test suite includes:
+
+- **Model Components** (`tests/test_model_components.py`):
+  - Encoder functionality and masking
+  - Decoder reconstruction capabilities
+  - WiMAE model integration
+  - ContraWiMAE contrastive learning
+
+- **Model Integration** (`tests/test_models.py`):
+  - Full model forward passes
+  - Checkpoint saving/loading
+  - Data integration with datasets
+
+- **Data Loading** (`tests/test_data_loading.py`):
+  - OptimizedPreloadedDataset functionality
+  - MultiNPZDataset memory mapping
+  - Data normalization utilities
+
+- **Patching and Masking** (`tests/test_patching_and_masking.py`):
+  - Complex input patching
+  - Patch size handling
+  - Data preservation
+
+- **Contrastive Learning** (`tests/test_contrastive_learning.py`):
+  - ContrastiveHead functionality
+  - InfoNCE loss computation
+  - Feature extraction
+
+### Test Configuration
+
+Tests use realistic configurations:
+- **Batch size**: 256 (for thorough testing)
+- **Patch size**: (1, 16) for 32×32 complex inputs
+- **Number of patches**: 128 (64 complex patches × 2 for real/imaginary)
+- **Model dimensions**: 64-dimensional encoder/decoder
+
+### Continuous Integration
+
+The test suite is designed to run quickly and reliably:
+- All tests should pass on CPU
+- No external data dependencies
+- Deterministic test data generation
+- Comprehensive error checking
+
+### Debugging Tests
+
+If tests fail, you can debug them with:
+
+```bash
+# Run with detailed output
+pytest -v -s
+
+# Run single test with debugger
+pytest tests/test_models.py::TestWiMAEModel::test_wimae_forward_complex_input -s
+
+# Run tests and stop on first failure
+pytest -x
+
+# Run tests and show local variables on failure
+pytest --tb=long
+```
+
 ## Project Structure
 
 ```

@@ -63,7 +63,8 @@ class TestWiMAEModel:
         
         # Check shapes
         batch_size = complex_input.shape[0]
-        num_patches = (32 // 1) * (32 // 16)  # 32 * 2 = 64 patches
+        num_complex_patches = (32 // 1) * (32 // 16)  # 32 * 2 = 64 complex patches
+        num_patches = num_complex_patches * 2  # 128 patches (real + imaginary parts)
         expected_keep = int(num_patches * (1 - wimae_model.mask_ratio))
         
         assert output["encoded_features"].shape == (batch_size, expected_keep, wimae_model.encoder_dim)
@@ -75,7 +76,8 @@ class TestWiMAEModel:
         
         # Check output shape
         batch_size = complex_input.shape[0]
-        num_patches = (32 // 1) * (32 // 16)  # 32 * 2 = 64 patches
+        num_complex_patches = (32 // 1) * (32 // 16)  # 32 * 2 = 64 complex patches
+        num_patches = num_complex_patches * 2  # 128 patches (real + imaginary parts)
         
         assert encoded_features.shape == (batch_size, num_patches, wimae_model.encoder_dim)
     
@@ -85,7 +87,8 @@ class TestWiMAEModel:
         
         # Check output shape
         batch_size = complex_input.shape[0]
-        num_patches = (32 // 1) * (32 // 16)  # 32 * 2 = 64 patches
+        num_complex_patches = (32 // 1) * (32 // 16)  # 32 * 2 = 64 complex patches
+        num_patches = num_complex_patches * 2  # 128 patches (real + imaginary parts)
         
         assert reconstructed.shape == (batch_size, num_patches, 16)  # 1x16 patch
     

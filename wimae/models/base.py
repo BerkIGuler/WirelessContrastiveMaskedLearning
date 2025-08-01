@@ -151,7 +151,7 @@ class WiMAE(nn.Module):
         
         Args:
             x: Input tensor
-            pooling: Pooling method ("mean", "cls", "max")
+            pooling: Pooling method ("mean", "max")
             
         Returns:
             Pooled embeddings tensor
@@ -164,14 +164,11 @@ class WiMAE(nn.Module):
         if pooling == "mean":
             # Mean pooling over all patches
             embeddings = torch.mean(encoded_features, dim=1)
-        elif pooling == "cls":
-            # Use first token as CLS token
-            embeddings = encoded_features[:, 0, :]
         elif pooling == "max":
             # Max pooling over patches
             embeddings = torch.max(encoded_features, dim=1)[0]
         else:
-            raise ValueError(f"Unsupported pooling method: {pooling}")
+            raise ValueError(f"Unsupported pooling method: {pooling}. Supported methods: 'mean', 'max'")
         
         return embeddings
     
