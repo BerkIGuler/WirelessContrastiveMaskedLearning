@@ -5,7 +5,6 @@ Base WiMAE model implementation.
 import torch
 import torch.nn as nn
 from typing import Optional, Tuple, Dict, Any
-from pathlib import Path
 
 from .modules import Encoder, Decoder, Patcher
 
@@ -84,25 +83,19 @@ class WiMAE(nn.Module):
         Forward pass through the WiMAE model.
         
         Args:
-            x: Input tensor of shape (batch_size, height, width) for complex channel matrices
-               or (batch_size, channels, height, width) for regular tensors
+            x: Input tensor (handles both complex and regular tensors)
             mask_ratio: Masking ratio (uses self.mask_ratio if None)
             return_reconstruction: Whether to return reconstruction
             
         Returns:
-            Dictionary containing encoded features and optionally reconstruction
+            Dictionary containing:
+                - encoded_features: Encoded patch features
+                - ids_keep: Indices of kept patches
+                - ids_mask: Indices of masked patches
+                - reconstructed_patches: Reconstructed patches (if return_reconstruction=True)
         """
-        # Handle complex channel matrices (original format)
-        if x.dtype == torch.complex64 or x.dtype == torch.complex128:
-            # For complex matrices, expected shape is (batch_size, height, width)
-            batch_size, height, width = x.shape
-        else:
-            # For regular tensors, expected shape is (batch_size, channels, height, width)
-            batch_size, channels, height, width = x.shape
-        
         # Convert to patches
-        patches = self.patcher(x)  # (batch_size, 2*num_patches, patch_dim) for complex data
-        num_patches = patches.shape[1] // 2  # Divide by 2 for complex data (real + imag)
+        patches = self.patcher(x)
         
         # Encode patches
         if mask_ratio is None:
@@ -131,7 +124,7 @@ class WiMAE(nn.Module):
             x: Input tensor
             
         Returns:
-            Encoded features
+            Encoded features tensor
         """
         with torch.no_grad():
             patches = self.patcher(x)
@@ -140,13 +133,13 @@ class WiMAE(nn.Module):
     
     def reconstruct(self, x: torch.Tensor) -> torch.Tensor:
         """
-        Reconstruct input data.
+        Reconstruct input data without masking.
         
         Args:
             x: Input tensor
             
         Returns:
-            Reconstructed tensor
+            Reconstructed patches tensor
         """
         with torch.no_grad():
             output = self.forward(x, mask_ratio=0.0, return_reconstruction=True)
@@ -154,14 +147,17 @@ class WiMAE(nn.Module):
     
     def get_embeddings(self, x: torch.Tensor, pooling: str = "mean") -> torch.Tensor:
         """
-        Get embeddings from encoded features.
+        Get embeddings from encoded features using specified pooling method.
         
         Args:
             x: Input tensor
             pooling: Pooling method ("mean", "cls", "max")
             
         Returns:
-            Pooled embeddings
+            Pooled embeddings tensor
+            
+        Raises:
+            ValueError: If pooling method is not supported
         """
         encoded_features = self.encode(x)
         

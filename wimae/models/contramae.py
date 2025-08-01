@@ -127,7 +127,7 @@ class ContraWiMAE(WiMAE):
         Returns:
             Dictionary containing outputs for original and augmented inputs
         """
-        # Create augmented version using original interface
+        # Create augmented version
         x_aug = apply_channel_augmentations(
             x, 
             noise_prob=noise_prob,
