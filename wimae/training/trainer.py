@@ -17,6 +17,11 @@ import numpy as np
 from datetime import datetime
 
 from ..models import WiMAE, ContraWiMAE
+from .data_utils import (
+    OptimizedPreloadedDataset, 
+    create_efficient_dataloader,
+    setup_dataloaders as setup_dataloaders_utils
+)
 
 
 class BaseTrainer:
@@ -116,21 +121,34 @@ class BaseTrainer:
             model: Model to optimize
             
         Returns:
-            Initialized optimizer
+            Configured optimizer
         """
-        training_config = self.config["training"]
-        optimizer_name = training_config["optimizer"]
-        lr = training_config["learning_rate"]
-        weight_decay = training_config["weight_decay"]
+        opt_config = self.config["training"]["optimizer"]
+        opt_type = opt_config["type"].lower()
         
-        if optimizer_name == "adam":
-            optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
-        elif optimizer_name == "adamw":
-            optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
-        elif optimizer_name == "sgd":
-            optimizer = optim.SGD(model.parameters(), lr=lr, weight_decay=weight_decay)
+        if opt_type == "adam":
+            optimizer = optim.Adam(
+                model.parameters(),
+                lr=opt_config["lr"],
+                weight_decay=opt_config.get("weight_decay", 0.0),
+                betas=tuple(opt_config.get("betas", (0.9, 0.999)))
+            )
+        elif opt_type == "adamw":
+            optimizer = optim.AdamW(
+                model.parameters(),
+                lr=opt_config["lr"],
+                weight_decay=opt_config.get("weight_decay", 0.01),
+                betas=tuple(opt_config.get("betas", (0.9, 0.999)))
+            )
+        elif opt_type == "sgd":
+            optimizer = optim.SGD(
+                model.parameters(),
+                lr=opt_config["lr"],
+                momentum=opt_config.get("momentum", 0.9),
+                weight_decay=opt_config.get("weight_decay", 0.0)
+            )
         else:
-            raise ValueError(f"Unknown optimizer: {optimizer_name}")
+            raise ValueError(f"Unknown optimizer type: {opt_type}")
         
         return optimizer
     
@@ -142,50 +160,120 @@ class BaseTrainer:
             optimizer: Optimizer to schedule
             
         Returns:
-            Initialized scheduler or None
+            Configured scheduler or None
         """
-        training_config = self.config["training"]
-        scheduler_name = training_config.get("scheduler")
-        
-        if scheduler_name is None:
+        if "scheduler" not in self.config["training"]:
             return None
+            
+        sched_config = self.config["training"]["scheduler"]
+        sched_type = sched_config["type"].lower()
         
-        epochs = training_config["epochs"]
-        warmup_epochs = training_config.get("warmup_epochs", 0)
-        
-        if scheduler_name == "cosine":
-            scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
-        elif scheduler_name == "step":
-            scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.1)
-        elif scheduler_name == "exponential":
-            scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.95)
-        elif scheduler_name == "plateau":
-            scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-                optimizer, mode='min', patience=10, factor=0.5
+        if sched_type == "cosine":
+            scheduler = optim.lr_scheduler.CosineAnnealingLR(
+                optimizer,
+                T_max=sched_config["T_max"],
+                eta_min=sched_config.get("eta_min", 0.0)
+            )
+        elif sched_type == "step":
+            scheduler = optim.lr_scheduler.StepLR(
+                optimizer,
+                step_size=sched_config["step_size"],
+                gamma=sched_config.get("gamma", 0.1)
+            )
+        elif sched_type == "exponential":
+            scheduler = optim.lr_scheduler.ExponentialLR(
+                optimizer,
+                gamma=sched_config["gamma"]
             )
         else:
-            raise ValueError(f"Unknown scheduler: {scheduler_name}")
+            raise ValueError(f"Unknown scheduler type: {sched_type}")
         
         return scheduler
     
     def setup_criterion(self) -> nn.Module:
-        """
-        Setup loss function.
+        """Setup loss function."""
+        loss_type = self.config["training"].get("loss", "mse").lower()
         
-        Returns:
-            Loss function
-        """
-        return nn.MSELoss()
+        if loss_type == "mse":
+            return nn.MSELoss()
+        elif loss_type == "l1":
+            return nn.L1Loss()
+        elif loss_type == "huber":
+            return nn.HuberLoss()
+        else:
+            raise ValueError(f"Unknown loss type: {loss_type}")
     
     def setup_dataloaders(self) -> Tuple[DataLoader, DataLoader]:
         """
-        Setup training and validation dataloaders.
+        Setup train and validation dataloaders.
         
         Returns:
-            Tuple of (train_loader, val_loader)
+            train_loader, val_loader
         """
-        # This should be implemented by subclasses
-        raise NotImplementedError
+        data_config = self.config["data"]
+        training_config = self.config["training"]
+        
+        # Check if using scenario split or direct NPZ files
+        if "config_path" in data_config:
+            # Use scenario split dataset
+            train_loader, val_loader, train_size, val_size = setup_dataloaders_utils(
+                config_path=data_config["config_path"],
+                data_dir=data_config["data_dir"],
+                batch_size=training_config["batch_size"],
+                num_workers=training_config.get("num_workers", 4),
+                normalize=data_config.get("normalize", False),
+                val_split=data_config.get("val_split", 0.2),
+                debug_size=data_config.get("debug_size", None)
+            )
+        else:
+            # Use direct NPZ files with OptimizedPreloadedDataset
+            npz_files = [str(Path(data_config["data_dir"]) / f) 
+                        for f in os.listdir(data_config["data_dir"]) 
+                        if f.endswith('.npz')]
+            
+            # Get statistics if normalization is enabled
+            statistics = None
+            if data_config.get("normalize", False):
+                statistics = data_config.get("statistics", {
+                    'real_mean': 0.021121172234416008,
+                    'real_std': 30.7452392578125,
+                    'imag_mean': -0.01027622725814581,
+                    'imag_std': 30.70543670654297
+                })
+            
+            # Create dataset
+            dataset = OptimizedPreloadedDataset(
+                npz_files=npz_files,
+                normalize=data_config.get("normalize", False),
+                statistics=statistics
+            )
+            
+            # Split dataset
+            val_split = data_config.get("val_split", 0.2)
+            val_size = int(len(dataset) * val_split)
+            train_size = len(dataset) - val_size
+            
+            train_dataset, val_dataset = random_split(
+                dataset, 
+                [train_size, val_size],
+                generator=torch.Generator().manual_seed(42)
+            )
+            
+            # Create dataloaders
+            train_loader = create_efficient_dataloader(
+                train_dataset,
+                batch_size=training_config["batch_size"],
+                num_workers=training_config.get("num_workers", 4),
+                shuffle=True
+            )
+            val_loader = create_efficient_dataloader(
+                val_dataset,
+                batch_size=training_config["batch_size"],
+                num_workers=training_config.get("num_workers", 4),
+                shuffle=False
+            )
+        
+        return train_loader, val_loader
     
     def train_epoch(self, train_loader: DataLoader) -> Dict[str, float]:
         """
