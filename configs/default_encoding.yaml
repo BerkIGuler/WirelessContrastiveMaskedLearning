@@ -40,9 +40,9 @@ encoding:
 data:
   data_path: "data/test/channels.npz"
   data_format: "npz"
-  channels: 2
-  height: 64
-  width: 64
+  channels: 1
+  height: 32
+  width: 32
   
   # Data subset
   subset: "all"  # Options: "all", "train", "val", "test"

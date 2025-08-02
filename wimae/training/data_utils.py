@@ -94,15 +94,23 @@ def create_efficient_dataloader(dataset: Dataset, batch_size: int = 1024,
     Returns:
         DataLoader instance
     """
-    return DataLoader(
-        dataset,
-        batch_size=batch_size,
-        shuffle=shuffle,
-        num_workers=num_workers,
-        pin_memory=True,
-        prefetch_factor=2,
-        persistent_workers=True,  # Keep workers alive between iterations
-    )
+    # Base DataLoader arguments
+    dataloader_kwargs = {
+        'dataset': dataset,
+        'batch_size': batch_size,
+        'shuffle': shuffle,
+        'num_workers': num_workers,
+        'pin_memory': True,
+    }
+    
+    # Add multiprocessing-specific options only when num_workers > 0
+    if num_workers > 0:
+        dataloader_kwargs.update({
+            'prefetch_factor': 2,
+            'persistent_workers': True,  # Keep workers alive between iterations
+        })
+    
+    return DataLoader(**dataloader_kwargs)
 
 
 def calculate_complex_statistics(dataloader: DataLoader) -> Dict[str, float]:
@@ -300,6 +308,9 @@ class OptimizedPreloadedDataset(Dataset):
             raise ValueError("If normalize is True, statistics must be provided")
 
         # First get total sample count and dimensions
+        if not npz_files:
+            raise ValueError("No NPZ files found")
+            
         total_samples = 0
         for npz_file in npz_files:
             with np.load(npz_file) as data:
@@ -356,6 +367,10 @@ class OptimizedPreloadedDataset(Dataset):
         return self.all_data.size(0)
 
     def __getitem__(self, idx: int) -> torch.Tensor:
+        if idx < 0:
+            raise IndexError("Negative index is not supported.")
+        if idx >= len(self):
+            raise IndexError(f"Index {idx} is out of bounds for dataset of size {len(self)}.")
         return self.all_data[idx]
 
 

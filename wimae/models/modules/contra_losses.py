@@ -20,6 +20,10 @@ def compute_contrastive_loss(z_i, z_j, temperature=0.1):
     """
     # Get batch size
     batch_size = z_i.shape[0]
+    
+    # Validate batch size - need at least 2 samples for contrastive learning
+    if batch_size < 2:
+        raise ValueError(f"Batch size must be at least 2 for contrastive learning, got {batch_size}")
 
     # Combine features from both views
     features = torch.cat([z_i, z_j], dim=0)  # [2B, D]
