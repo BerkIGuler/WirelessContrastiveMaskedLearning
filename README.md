@@ -142,6 +142,53 @@ The test suite is designed to run quickly and reliably:
 - Deterministic test data generation
 - Comprehensive error checking
 
+### Git Hooks
+
+The repository includes a pre-push hook that automatically runs tests before pushing to ensure code quality:
+
+#### Automatic Test Execution
+
+The pre-push hook will:
+1. Check if required packages (pytest, torch, numpy, yaml) are available
+2. Run all test suites (data loading, contrastive learning, model components)
+3. Only allow the push if all tests pass
+
+#### Usage
+
+```bash
+# Normal push (tests will run automatically)
+git push
+
+# Skip tests (use with caution)
+git push --no-verify
+```
+
+#### Setup for New Developers
+
+When cloning the repository, the hook should be automatically active. If you need to set it up manually:
+
+```bash
+# Make the hook executable
+chmod +x .git/hooks/pre-push
+```
+
+#### Environment Requirements
+
+The hook works with any Python environment that has the required packages:
+- pytest
+- torch
+- numpy
+- PyYAML (yaml)
+- tqdm
+- scikit-learn (sklearn)
+
+It doesn't assume a specific conda environment name, so it works across different developer setups.
+
+**Quick setup for new developers:**
+```bash
+pip install -r requirements.txt
+```
+
 ### Debugging Tests
 
 If tests fail, you can debug them with:
