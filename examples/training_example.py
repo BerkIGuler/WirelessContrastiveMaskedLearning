@@ -1,80 +1,234 @@
 #!/usr/bin/env python3
 """
-Example training script using OptimizedPreloadedDataset.
-
-This script demonstrates how to use the optimized data loading pipeline
-with the WiMAE/ContraWiMAE training framework.
+Example script demonstrating WiMAE and ContraWiMAE training with different data loading approaches.
 """
 
 import yaml
-import argparse
+import torch
 from pathlib import Path
-from wimae.training.trainer import BaseTrainer
+
+from wimae.training.train_wimae import WiMAETrainer
+from wimae.training.train_contramae import ContraWiMAETrainer
+from wimae.models.wimae import WiMAE
+from wimae.models.contramae import ContraWiMAE
+
+
+def example_simple_data_loading():
+    """Example: Train with simple data loading (all NPZ files)."""
+    print("=" * 60)
+    print("EXAMPLE 1: Simple Data Loading")
+    print("=" * 60)
+    
+    # Load configuration
+    config_path = "configs/default_training.yaml"
+    with open(config_path, 'r') as f:
+        config = yaml.safe_load(f)
+    
+    print(f"Using config: {config_path}")
+    print(f"Data directory: {config['data']['data_dir']}")
+    print(f"Model type: {config['model']['type']}")
+    
+    # Create model
+    if config['model']['type'] == 'wimae':
+        model = WiMAE(
+            patch_size=tuple(config['model']['patch_size']),
+            encoder_dim=config['model']['encoder_dim'],
+            encoder_layers=config['model']['encoder_layers'],
+            encoder_nhead=config['model']['encoder_nhead'],
+            decoder_layers=config['model']['decoder_layers'],
+            decoder_nhead=config['model']['decoder_nhead'],
+            mask_ratio=config['model']['mask_ratio']
+        )
+        trainer_class = WiMAETrainer
+    else:
+        model = ContraWiMAE(
+            patch_size=tuple(config['model']['patch_size']),
+            encoder_dim=config['model']['encoder_dim'],
+            encoder_layers=config['model']['encoder_layers'],
+            encoder_nhead=config['model']['encoder_nhead'],
+            decoder_layers=config['model']['decoder_layers'],
+            decoder_nhead=config['model']['decoder_nhead'],
+            mask_ratio=config['model']['mask_ratio'],
+            contrastive_dim=config['model']['contrastive_dim'],
+            temperature=config['model']['temperature']
+        )
+        trainer_class = ContraWiMAETrainer
+    
+    # Create trainer
+    trainer = trainer_class(config, model)
+    
+    # Setup dataloaders (this will use simple approach)
+    train_loader, val_loader = trainer.setup_dataloaders()
+    
+    print(f"Train batches: {len(train_loader)}")
+    print(f"Validation batches: {len(val_loader)}")
+    
+    # Test a few batches
+    print("\nTesting data loading...")
+    for i, batch in enumerate(train_loader):
+        print(f"Train batch {i+1}: shape={batch.shape}, dtype={batch.dtype}")
+        if i >= 2:  # Just test first 3 batches
+            break
+    
+    print("✅ Simple data loading completed successfully!")
+
+
+def example_scenario_split_data_loading():
+    """Example: Train with scenario split data loading."""
+    print("\n" + "=" * 60)
+    print("EXAMPLE 2: Scenario Split Data Loading")
+    print("=" * 60)
+    
+    # Load configuration
+    config_path = "configs/training_scenario_split.yaml"
+    with open(config_path, 'r') as f:
+        config = yaml.safe_load(f)
+    
+    print(f"Using config: {config_path}")
+    print(f"Data directory: {config['data']['data_dir']}")
+    print(f"Scenario split config: {config['data']['scenario_split_config']}")
+    print(f"Model type: {config['model']['type']}")
+    
+    # Create model
+    if config['model']['type'] == 'wimae':
+        model = WiMAE(
+            patch_size=tuple(config['model']['patch_size']),
+            encoder_dim=config['model']['encoder_dim'],
+            encoder_layers=config['model']['encoder_layers'],
+            encoder_nhead=config['model']['encoder_nhead'],
+            decoder_layers=config['model']['decoder_layers'],
+            decoder_nhead=config['model']['decoder_nhead'],
+            mask_ratio=config['model']['mask_ratio']
+        )
+        trainer_class = WiMAETrainer
+    else:
+        model = ContraWiMAE(
+            patch_size=tuple(config['model']['patch_size']),
+            encoder_dim=config['model']['encoder_dim'],
+            encoder_layers=config['model']['encoder_layers'],
+            encoder_nhead=config['model']['encoder_nhead'],
+            decoder_layers=config['model']['decoder_layers'],
+            decoder_nhead=config['model']['decoder_nhead'],
+            mask_ratio=config['model']['mask_ratio'],
+            contrastive_dim=config['model']['contrastive_dim'],
+            temperature=config['model']['temperature']
+        )
+        trainer_class = ContraWiMAETrainer
+    
+    # Create trainer
+    trainer = trainer_class(config, model)
+    
+    # Setup dataloaders (this will use scenario split approach)
+    train_loader, val_loader = trainer.setup_dataloaders()
+    
+    print(f"Train batches: {len(train_loader)}")
+    print(f"Validation batches: {len(val_loader)}")
+    
+    # Test a few batches
+    print("\nTesting data loading...")
+    for i, batch in enumerate(train_loader):
+        print(f"Train batch {i+1}: shape={batch.shape}, dtype={batch.dtype}")
+        if i >= 2:  # Just test first 3 batches
+            break
+    
+    print("✅ Scenario split data loading completed successfully!")
+
+
+def example_contra_wimae_training():
+    """Example: ContraWiMAE training with contrastive learning."""
+    print("\n" + "=" * 60)
+    print("EXAMPLE 3: ContraWiMAE Training")
+    print("=" * 60)
+    
+    # Load configuration
+    config_path = "configs/training_scenario_split.yaml"
+    with open(config_path, 'r') as f:
+        config = yaml.safe_load(f)
+    
+    # Ensure we're using ContraWiMAE
+    config['model']['type'] = 'contramae'
+    
+    # Add contrastive learning weights
+    config['training']['reconstruction_weight'] = 1.0
+    config['training']['contrastive_weight'] = 0.1
+    
+    print(f"Using config: {config_path}")
+    print(f"Model type: {config['model']['type']}")
+    print(f"Reconstruction weight: {config['training']['reconstruction_weight']}")
+    print(f"Contrastive weight: {config['training']['contrastive_weight']}")
+    
+    # Create ContraWiMAE model
+    model = ContraWiMAE(
+        patch_size=tuple(config['model']['patch_size']),
+        encoder_dim=config['model']['encoder_dim'],
+        encoder_layers=config['model']['encoder_layers'],
+        encoder_nhead=config['model']['encoder_nhead'],
+        decoder_layers=config['model']['decoder_layers'],
+        decoder_nhead=config['model']['decoder_nhead'],
+        mask_ratio=config['model']['mask_ratio'],
+        contrastive_dim=config['model']['contrastive_dim'],
+        temperature=config['model']['temperature']
+    )
+    
+    # Create trainer
+    trainer = ContraWiMAETrainer(config, model)
+    
+    # Setup dataloaders
+    train_loader, val_loader = trainer.setup_dataloaders()
+    
+    print(f"Train batches: {len(train_loader)}")
+    print(f"Validation batches: {len(val_loader)}")
+    
+    # Test a few batches
+    print("\nTesting data loading...")
+    for i, batch in enumerate(train_loader):
+        print(f"Train batch {i+1}: shape={batch.shape}, dtype={batch.dtype}")
+        if i >= 2:  # Just test first 3 batches
+            break
+    
+    print("✅ ContraWiMAE training setup completed successfully!")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Train WiMAE/ContraWiMAE with optimized data loading")
-    parser.add_argument("--config", type=str, default="configs/default_training.yaml", 
-                       help="Path to config file (default: configs/default_training.yaml)")
-    parser.add_argument("--data-dir", type=str, help="Override data directory from config")
-    parser.add_argument("--debug", action="store_true", help="Enable debug mode (small dataset)")
-    args = parser.parse_args()
+    """Run all training examples."""
+    print("Training Examples with Updated Data Loading")
+    print("=" * 60)
     
-    # Load configuration
-    with open(args.config, 'r') as f:
-        config = yaml.safe_load(f)
+    try:
+        example_simple_data_loading()
+    except Exception as e:
+        print(f"❌ Example 1 failed: {e}")
     
-    # Override data directory if provided
-    if args.data_dir:
-        config["data"]["data_dir"] = args.data_dir
+    try:
+        example_scenario_split_data_loading()
+    except Exception as e:
+        print(f"❌ Example 2 failed: {e}")
     
-    # Enable debug mode if requested
-    if args.debug:
-        config["data"]["debug_size"] = 1000
-        print("Debug mode enabled: using 1000 samples")
+    try:
+        example_contra_wimae_training()
+    except Exception as e:
+        print(f"❌ Example 3 failed: {e}")
     
-    # Validate configuration
-    validate_config(config)
-    
-    # Create trainer and start training
-    trainer = BaseTrainer(config)
-    trainer.train()
-
-
-def validate_config(config):
-    """Validate the configuration file."""
-    required_sections = ["model", "data", "training", "logging"]
-    for section in required_sections:
-        if section not in config:
-            raise ValueError(f"Missing required section: {section}")
-    
-    # Validate data configuration
-    data_config = config["data"]
-    if "data_dir" not in data_config:
-        raise ValueError("data.data_dir is required")
-    
-    data_dir = Path(data_config["data_dir"])
-    if not data_dir.exists():
-        raise ValueError(f"Data directory does not exist: {data_dir}")
-    
-    # Check for NPZ files
-    npz_files = list(data_dir.glob("*.npz"))
-    if not npz_files:
-        raise ValueError(f"No NPZ files found in {data_dir}")
-    
-    print(f"Found {len(npz_files)} NPZ files in {data_dir}")
-    
-    # Validate model configuration
-    model_config = config["model"]
-    if model_config["type"] not in ["wimae", "contramae"]:
-        raise ValueError(f"Unknown model type: {model_config['type']}")
-    
-    # Validate training configuration
-    training_config = config["training"]
-    required_training_keys = ["batch_size", "epochs", "device"]
-    for key in required_training_keys:
-        if key not in training_config:
-            raise ValueError(f"Missing required training key: {key}")
+    print("\n" + "=" * 60)
+    print("SUMMARY")
+    print("=" * 60)
+    print("Updated trainers now support:")
+    print()
+    print("1. SIMPLE DATA LOADING:")
+    print("   - Load all NPZ files from data_dir")
+    print("   - Random train/val split")
+    print("   - Use configs/default_training.yaml")
+    print()
+    print("2. SCENARIO SPLIT DATA LOADING:")
+    print("   - Use file patterns for train/val/test splits")
+    print("   - Scenario-based data organization")
+    print("   - Use configs/training_scenario_split.yaml")
+    print()
+    print("3. BOTH WiMAE AND ContraWiMAE:")
+    print("   - Same data loading interface")
+    print("   - Automatic model selection")
+    print("   - Contrastive learning support")
+    print("=" * 60)
 
 
 if __name__ == "__main__":

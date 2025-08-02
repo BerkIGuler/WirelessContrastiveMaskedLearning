@@ -1,4 +1,4 @@
-# Default training configuration for WiMAE and ContraWiMAE with OptimizedPreloadedDataset
+# Training configuration for WiMAE and ContraWiMAE with Scenario Split
 
 # Model configuration
 model:
@@ -15,7 +15,7 @@ model:
   snr_min: 0.0
   snr_max: 30.0
 
-# Data configuration
+# Data configuration with Scenario Split
 data:
   # Data directory containing NPZ files
   data_dir: "data/pretrain"
@@ -27,53 +27,42 @@ data:
   
   # Statistics handling options:
   # Option 1: Calculate statistics on-the-fly from training data
-  calculate_statistics: false  # Set to true to calculate from data
+  calculate_statistics: true  # Calculate from training data
   
   # Option 2: Use pre-computed statistics (used if calculate_statistics=false)
-  statistics:
-    real_mean: 0.021121172234416008
-    real_std: 30.7452392578125
-    imag_mean: -0.01027622725814581
-    imag_std: 30.70543670654297
+  # statistics:
+  #   real_mean: 0.021121172234416008
+  #   real_std: 30.7452392578125
+  #   imag_mean: -0.01027622725814581
+  #   imag_std: 30.70543670654297
   
-  # Data loading approach:
-  # Option 1: Simple approach - all NPZ files in data_dir
-  # (no scenario_split_config needed)
-  
-  # Option 2: Scenario split approach - use file patterns
-  # scenario_split_config: "configs/scenario_split_simple.yaml"
+  # Scenario split configuration
+  scenario_split_config: "configs/scenario_split_simple.yaml"
   # scenario_split_config: "configs/scenario_split_test.yaml"
 
 # Training configuration
 training:
   batch_size: 64
-  epochs: 3000
+  epochs: 100
   num_workers: 4
   device: "cuda:0"
   
   optimizer:
-    type: "adam"
-    lr: 0.0003
-    weight_decay: 0.0
+    type: "adamw"
+    lr: 0.0001
+    weight_decay: 0.01
     betas: [0.9, 0.999]
   
   scheduler:
     type: "cosine"
-    T_max: 3000
-    eta_min: 0.000003
+    T_max: 100
+    eta_min: 0.000001
   
   loss: "mse"
   
   # Early stopping
   patience: 20
   min_delta: 0.001
-  
-  # Loss weights (for contrastive learning)
-  reconstruction_weight: 1.0
-  contrastive_weight: 1.0
-  
-  # Gradient clipping
-  gradient_clip_val: 1.0
   
   # Checkpointing
   save_checkpoint_every_n: 10

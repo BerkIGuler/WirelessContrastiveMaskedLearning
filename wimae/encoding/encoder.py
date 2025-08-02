@@ -14,7 +14,7 @@ import json
 from datetime import datetime
 
 from ..models import WiMAE, ContraWiMAE
-from ..training.train_wimae import WirelessChannelDataset
+from ..training.data_utils import OptimizedPreloadedDataset
 
 
 class Encoder:
@@ -72,7 +72,11 @@ class Encoder:
             Dictionary containing embeddings and metadata
         """
         # Create dataset
-        dataset = WirelessChannelDataset(data_path, data_format)
+        dataset = OptimizedPreloadedDataset(
+            npz_files=[data_path],
+            normalize=self.config["encoding"].get("normalize", False),
+            statistics=self.config["encoding"].get("statistics")
+        )
         
         # Create dataloader
         dataloader = DataLoader(

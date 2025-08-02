@@ -26,6 +26,30 @@ The training pipeline expects NPZ files containing complex channel matrices:
 - The data should be complex-valued (real + imaginary parts)
 - Files should be placed in a directory specified by `data_dir` in the config
 
+### Data Loading Approaches
+
+The system supports two data loading approaches:
+
+#### 1. Simple Approach (Default)
+Load all NPZ files from a directory and split randomly:
+```yaml
+data:
+  data_dir: "data/pretrain"
+  normalize: true
+  calculate_statistics: true
+  # No scenario_split_config needed
+```
+
+#### 2. Scenario Split Approach
+Use file patterns to split data based on scenarios:
+```yaml
+data:
+  data_dir: "data/pretrain"
+  normalize: true
+  calculate_statistics: true
+  scenario_split_config: "configs/scenario_split_simple.yaml"
+```
+
 ### Data Normalization
 
 The system supports two approaches for data normalization:

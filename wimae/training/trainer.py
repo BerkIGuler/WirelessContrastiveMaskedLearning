@@ -5,22 +5,21 @@ Base trainer class for WiMAE and ContraWiMAE models.
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader, Dataset, random_split
 from torch.utils.tensorboard import SummaryWriter
 import yaml
 import os
-import time
 from pathlib import Path
 from typing import Dict, Any, Optional, Tuple, List
 from tqdm import tqdm
-import numpy as np
 from datetime import datetime
 
 from ..models import WiMAE, ContraWiMAE
 from .data_utils import (
     OptimizedPreloadedDataset, 
+    ScenarioSplitDataset,
     create_efficient_dataloader,
-    setup_dataloaders as setup_dataloaders_utils
+    calculate_complex_statistics
 )
 
 
@@ -137,7 +136,7 @@ class BaseTrainer:
             optimizer = optim.AdamW(
                 model.parameters(),
                 lr=opt_config["lr"],
-                weight_decay=opt_config.get("weight_decay", 0.01),
+                weight_decay=opt_config.get("weight_decay", 0.0),
                 betas=tuple(opt_config.get("betas", (0.9, 0.999)))
             )
         elif opt_type == "sgd":
@@ -172,7 +171,7 @@ class BaseTrainer:
             scheduler = optim.lr_scheduler.CosineAnnealingLR(
                 optimizer,
                 T_max=sched_config["T_max"],
-                eta_min=sched_config.get("eta_min", 0.0)
+                eta_min=sched_config.get("eta_min", 0.000003)
             )
         elif sched_type == "step":
             scheduler = optim.lr_scheduler.StepLR(
@@ -213,38 +212,88 @@ class BaseTrainer:
         data_config = self.config["data"]
         training_config = self.config["training"]
         
-        # Check if using scenario split or direct NPZ files
-        if "config_path" in data_config:
-            # Use scenario split dataset
-            train_loader, val_loader, train_size, val_size = setup_dataloaders_utils(
-                config_path=data_config["config_path"],
-                data_dir=data_config["data_dir"],
-                batch_size=training_config["batch_size"],
-                num_workers=training_config.get("num_workers", 4),
-                normalize=data_config.get("normalize", False),
-                val_split=data_config.get("val_split", 0.2),
-                debug_size=data_config.get("debug_size", None)
+        # Get configuration
+        normalize = data_config.get("normalize", False)
+        calculate_stats = data_config.get("calculate_statistics", False)
+        
+        # Setup statistics
+        statistics = self._setup_statistics(data_config, normalize, calculate_stats)
+        
+        # Create initial datasets
+        train_dataset, val_dataset, npz_files = self._create_datasets(
+            data_config, normalize, calculate_stats, statistics
+        )
+        
+        # Calculate statistics if needed
+        if normalize and calculate_stats:
+            statistics = self._calculate_statistics(train_dataset, training_config)
+            train_dataset, val_dataset = self._recreate_datasets_with_statistics(
+                data_config, statistics, npz_files
             )
+        
+        # Apply debug size if specified
+        if data_config.get("debug_size"):
+            train_dataset, val_dataset = self._apply_debug_size(
+                train_dataset, val_dataset, data_config["debug_size"]
+            )
+        
+        # Create dataloaders
+        train_loader, val_loader = self._create_dataloaders(
+            train_dataset, val_dataset, training_config
+        )
+        
+        print(f"Train samples: {len(train_dataset)}")
+        print(f"Validation samples: {len(val_dataset)}")
+        
+        return train_loader, val_loader
+    
+    def _setup_statistics(self, data_config: Dict, normalize: bool, calculate_stats: bool) -> Optional[Dict]:
+        """Setup statistics configuration."""
+        if normalize and not calculate_stats:
+            statistics = data_config.get("statistics", {
+                'real_mean': 0.021121172234416008,
+                'real_std': 30.7452392578125,
+                'imag_mean': -0.01027622725814581,
+                'imag_std': 30.70543670654297
+            })
+            print(f"Using pre-computed statistics: {statistics}")
+            return statistics
+        return None
+    
+    def _create_datasets(self, data_config: Dict, normalize: bool, calculate_stats: bool, 
+                        statistics: Optional[Dict]) -> Tuple[Dataset, Dataset, Optional[List[str]]]:
+        """Create initial train and validation datasets."""
+        if "scenario_split_config" in data_config:
+            # Scenario split approach
+            train_dataset = ScenarioSplitDataset(
+                data_dir=data_config["data_dir"],
+                config_path=data_config["scenario_split_config"],
+                split='train',
+                normalize=normalize and not calculate_stats,
+                statistics=statistics
+            )
+            
+            val_dataset = ScenarioSplitDataset(
+                data_dir=data_config["data_dir"],
+                config_path=data_config["scenario_split_config"],
+                split='val',
+                normalize=normalize and not calculate_stats,
+                statistics=statistics
+            )
+            return train_dataset, val_dataset, None
         else:
-            # Use direct NPZ files with OptimizedPreloadedDataset
+            # Simple approach with all NPZ files
             npz_files = [str(Path(data_config["data_dir"]) / f) 
                         for f in os.listdir(data_config["data_dir"]) 
                         if f.endswith('.npz')]
             
-            # Get statistics if normalization is enabled
-            statistics = None
-            if data_config.get("normalize", False):
-                statistics = data_config.get("statistics", {
-                    'real_mean': 0.021121172234416008,
-                    'real_std': 30.7452392578125,
-                    'imag_mean': -0.01027622725814581,
-                    'imag_std': 30.70543670654297
-                })
+            if not npz_files:
+                raise ValueError(f"No NPZ files found in {data_config['data_dir']}")
             
-            # Create dataset
+            # Create full dataset
             dataset = OptimizedPreloadedDataset(
                 npz_files=npz_files,
-                normalize=data_config.get("normalize", False),
+                normalize=normalize and not calculate_stats,
                 statistics=statistics
             )
             
@@ -258,20 +307,100 @@ class BaseTrainer:
                 [train_size, val_size],
                 generator=torch.Generator().manual_seed(42)
             )
+            return train_dataset, val_dataset, npz_files
+    
+    def _calculate_statistics(self, train_dataset: Dataset, training_config: Dict) -> Dict:
+        """Calculate statistics from training dataset."""
+        print("Computing statistics from training dataset...")
+        
+        # Create temporary dataloader for statistics calculation
+        temp_loader = create_efficient_dataloader(
+            train_dataset,
+            batch_size=min(training_config["batch_size"], 256),
+            num_workers=min(training_config.get("num_workers", 4), 2),
+            shuffle=False
+        )
+        
+        # Calculate statistics
+        statistics = calculate_complex_statistics(temp_loader)
+        print(f"Calculated statistics: {statistics}")
+        return statistics
+    
+    def _recreate_datasets_with_statistics(self, data_config: Dict, statistics: Dict, 
+                                         npz_files: Optional[List[str]]) -> Tuple[Dataset, Dataset]:
+        """Recreate datasets with calculated statistics."""
+        if "scenario_split_config" in data_config:
+            # Scenario split approach
+            train_dataset = ScenarioSplitDataset(
+                data_dir=data_config["data_dir"],
+                config_path=data_config["scenario_split_config"],
+                split='train',
+                normalize=True,
+                statistics=statistics
+            )
             
-            # Create dataloaders
-            train_loader = create_efficient_dataloader(
-                train_dataset,
-                batch_size=training_config["batch_size"],
-                num_workers=training_config.get("num_workers", 4),
-                shuffle=True
+            val_dataset = ScenarioSplitDataset(
+                data_dir=data_config["data_dir"],
+                config_path=data_config["scenario_split_config"],
+                split='val',
+                normalize=True,
+                statistics=statistics
             )
-            val_loader = create_efficient_dataloader(
-                val_dataset,
-                batch_size=training_config["batch_size"],
-                num_workers=training_config.get("num_workers", 4),
-                shuffle=False
+        else:
+            # Simple approach
+            dataset = OptimizedPreloadedDataset(
+                npz_files=npz_files,
+                normalize=True,
+                statistics=statistics
             )
+            
+            # Re-split dataset
+            val_split = data_config.get("val_split", 0.2)
+            val_size = int(len(dataset) * val_split)
+            train_size = len(dataset) - val_size
+            
+            train_dataset, val_dataset = random_split(
+                dataset, 
+                [train_size, val_size],
+                generator=torch.Generator().manual_seed(42)
+            )
+        
+        return train_dataset, val_dataset
+    
+    def _apply_debug_size(self, train_dataset: Dataset, val_dataset: Dataset, 
+                         debug_size: int) -> Tuple[Dataset, Dataset]:
+        """Apply debug size restrictions to datasets."""
+        train_size = min(debug_size, len(train_dataset))
+        val_size = min(debug_size // 4, len(val_dataset))
+        
+        train_dataset, _ = random_split(
+            train_dataset, 
+            [train_size, len(train_dataset) - train_size],
+            generator=torch.Generator().manual_seed(42)
+        )
+        val_dataset, _ = random_split(
+            val_dataset, 
+            [val_size, len(val_dataset) - val_size],
+            generator=torch.Generator().manual_seed(42)
+        )
+        
+        return train_dataset, val_dataset
+    
+    def _create_dataloaders(self, train_dataset: Dataset, val_dataset: Dataset, 
+                           training_config: Dict) -> Tuple[DataLoader, DataLoader]:
+        """Create train and validation dataloaders."""
+        train_loader = create_efficient_dataloader(
+            train_dataset,
+            batch_size=training_config["batch_size"],
+            num_workers=training_config.get("num_workers", 4),
+            shuffle=True
+        )
+        val_loader = create_efficient_dataloader(
+            val_dataset,
+            batch_size=training_config["batch_size"],
+            num_workers=training_config.get("num_workers", 4),
+            shuffle=False
+        )
         
         return train_loader, val_loader
     
@@ -361,7 +490,7 @@ class BaseTrainer:
         
         # Training loop
         epochs = self.config["training"]["epochs"]
-        patience = self.config["training"]["early_stopping_patience"]
+        patience = self.config["training"]["patience"]
         
         print(f"Starting training for {epochs} epochs...")
         print(f"Model: {self.config['model']['type']}")
@@ -387,8 +516,10 @@ class BaseTrainer:
                 else:
                     self.scheduler.step()
             
-            # Checkpointing
-            is_best = val_metrics["val_loss"] < self.best_val_loss
+            # Checkpointing and early stopping
+            min_delta = self.config["training"]["min_delta"]
+            is_best = val_metrics["val_loss"] < (self.best_val_loss - min_delta)
+            
             if is_best:
                 self.best_val_loss = val_metrics["val_loss"]
                 self.patience_counter = 0
@@ -396,7 +527,8 @@ class BaseTrainer:
                 self.patience_counter += 1
             
             # Save checkpoint
-            if epoch % self.config["logging"]["save_interval"] == 0 or is_best:
+            save_every_n = self.config["training"]["save_checkpoint_every_n"]
+            if epoch % save_every_n == 0 or is_best:
                 self.save_checkpoint(is_best=is_best)
             
             # Early stopping

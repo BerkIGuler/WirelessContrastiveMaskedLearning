@@ -34,8 +34,8 @@ class ContraWiMAETrainer(WiMAETrainer):
         num_batches = len(train_loader)
         
         # Get loss weights
-        recon_weight = self.config["training"]["reconstruction_weight"]
-        contrastive_weight = self.config["training"]["contrastive_weight"]
+        recon_weight = self.config["training"].get("reconstruction_weight", 1.0)
+        contrastive_weight = self.config["training"].get("contrastive_weight", 1.0)
         
         progress_bar = tqdm(train_loader, desc=f"Training Epoch {self.current_epoch}")
         
@@ -91,10 +91,11 @@ class ContraWiMAETrainer(WiMAETrainer):
             loss.backward()
             
             # Gradient clipping
-            if self.config["training"]["gradient_clip_val"] > 0:
+            gradient_clip_val = self.config["training"].get("gradient_clip_val", 0.0)
+            if gradient_clip_val > 0:
                 torch.nn.utils.clip_grad_norm_(
                     self.model.parameters(), 
-                    self.config["training"]["gradient_clip_val"]
+                    gradient_clip_val
                 )
             
             self.optimizer.step()
@@ -114,7 +115,8 @@ class ContraWiMAETrainer(WiMAETrainer):
             })
             
             # Log to tensorboard
-            if self.writer and batch_idx % self.config["logging"]["log_interval"] == 0:
+            log_interval = self.config["logging"].get("log_every_n_steps", 100)
+            if self.writer and batch_idx % log_interval == 0:
                 self.writer.add_scalar("train/batch_recon_loss", recon_loss.item(), self.global_step)
                 self.writer.add_scalar("train/batch_contrastive_loss", contrastive_loss.item(), self.global_step)
                 self.writer.add_scalar("train/batch_total_loss", loss.item(), self.global_step)
@@ -143,8 +145,8 @@ class ContraWiMAETrainer(WiMAETrainer):
         num_batches = len(val_loader)
         
         # Get loss weights
-        recon_weight = self.config["training"]["reconstruction_weight"]
-        contrastive_weight = self.config["training"]["contrastive_weight"]
+        recon_weight = self.config["training"].get("reconstruction_weight", 1.0)
+        contrastive_weight = self.config["training"].get("contrastive_weight", 1.0)
         
         with torch.no_grad():
             for data in tqdm(val_loader, desc="Validation"):

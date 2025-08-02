@@ -11,7 +11,6 @@ from pathlib import Path
 
 from wimae.training.data_utils import (
     OptimizedPreloadedDataset,
-    MultiNPZDataset,
     normalize_complex_matrix,
     denormalize_complex_matrix,
     calculate_complex_statistics,
@@ -103,29 +102,7 @@ class TestDataLoading:
         assert torch.all(real_part >= -5) and torch.all(real_part <= 5)
         assert torch.all(imag_part >= -6) and torch.all(imag_part <= 6)
     
-    def test_multi_npz_dataset(self, temp_npz_files):
-        """Test MultiNPZDataset functionality."""
-        dataset = MultiNPZDataset(temp_npz_files, normalize=False)
-        
-        assert len(dataset) == 45
-        assert dataset.M == 32
-        assert dataset.N == 32
-        
-        # Test data loading
-        sample = dataset[0]
-        assert sample.shape == (32, 32)
-        assert sample.dtype == torch.complex64
-    
-    def test_multi_npz_dataset_with_normalization(self, temp_npz_files, statistics):
-        """Test MultiNPZDataset with normalization."""
-        dataset = MultiNPZDataset(temp_npz_files, normalize=True, statistics=statistics)
-        
-        assert len(dataset) == 45
-        
-        # Test that data is normalized
-        sample = dataset[0]
-        assert sample.shape == (32, 32)
-        assert sample.dtype == torch.complex64
+
     
     def test_normalize_complex_matrix(self, statistics):
         """Test complex matrix normalization."""

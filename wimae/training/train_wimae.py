@@ -4,108 +4,17 @@ WiMAE trainer implementation.
 
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader, random_split, Dataset
-import numpy as np
+from torch.utils.data import DataLoader
 from typing import Dict, Any, Tuple
 from tqdm import tqdm
 
 from .trainer import BaseTrainer
 
 
-class WirelessChannelDataset(Dataset):
-    """
-    Dataset for wireless channel data.
-    """
-    
-    def __init__(self, data_path: str, data_format: str = "npz"):
-        """
-        Initialize the dataset.
-        
-        Args:
-            data_path: Path to data file
-            data_format: Data format ("npz", "npy", etc.)
-        """
-        self.data_path = data_path
-        self.data_format = data_format
-        
-        # Load data
-        if data_format == "npz":
-            data = np.load(data_path)
-            # Assuming the data is stored as 'channels' key
-            self.data = data['channels'] if 'channels' in data else data['data']
-        else:
-            self.data = np.load(data_path)
-        
-        # Ensure data is in the right format (batch, channels, height, width)
-        if len(self.data.shape) == 3:
-            # Add channel dimension if missing
-            self.data = self.data[:, np.newaxis, :, :]
-        elif len(self.data.shape) == 4:
-            # Data is already in the right format
-            pass
-        else:
-            raise ValueError(f"Unexpected data shape: {self.data.shape}")
-    
-    def __len__(self):
-        return len(self.data)
-    
-    def __getitem__(self, idx):
-        # Convert to tensor and ensure float32
-        data = torch.from_numpy(self.data[idx]).float()
-        return data
-
-
 class WiMAETrainer(BaseTrainer):
     """
     Trainer for WiMAE model.
     """
-    
-    def setup_dataloaders(self) -> Tuple[DataLoader, DataLoader]:
-        """
-        Setup training and validation dataloaders.
-        
-        Returns:
-            Tuple of (train_loader, val_loader)
-        """
-        data_config = self.config["data"]
-        training_config = self.config["training"]
-        
-        # Create dataset
-        dataset = WirelessChannelDataset(
-            data_path=data_config["data_path"],
-            data_format=data_config["data_format"]
-        )
-        
-        # Split dataset
-        val_split = training_config["val_split"]
-        val_size = int(len(dataset) * val_split)
-        train_size = len(dataset) - val_size
-        
-        train_dataset, val_dataset = random_split(
-            dataset, [train_size, val_size],
-            generator=torch.Generator().manual_seed(42)
-        )
-        
-        # Create dataloaders
-        train_loader = DataLoader(
-            train_dataset,
-            batch_size=training_config["batch_size"],
-            shuffle=True,
-            num_workers=data_config["num_workers"],
-            pin_memory=data_config["pin_memory"],
-            persistent_workers=data_config["persistent_workers"]
-        )
-        
-        val_loader = DataLoader(
-            val_dataset,
-            batch_size=training_config["batch_size"],
-            shuffle=False,
-            num_workers=data_config["num_workers"],
-            pin_memory=data_config["pin_memory"],
-            persistent_workers=data_config["persistent_workers"]
-        )
-        
-        return train_loader, val_loader
     
     def train_epoch(self, train_loader: DataLoader) -> Dict[str, float]:
         """
@@ -145,10 +54,11 @@ class WiMAETrainer(BaseTrainer):
             loss.backward()
             
             # Gradient clipping
-            if self.config["training"]["gradient_clip_val"] > 0:
+            gradient_clip_val = self.config["training"].get("gradient_clip_val", 0.0)
+            if gradient_clip_val > 0:
                 torch.nn.utils.clip_grad_norm_(
                     self.model.parameters(), 
-                    self.config["training"]["gradient_clip_val"]
+                    gradient_clip_val
                 )
             
             self.optimizer.step()
@@ -164,7 +74,8 @@ class WiMAETrainer(BaseTrainer):
             })
             
             # Log to tensorboard
-            if self.writer and batch_idx % self.config["logging"]["log_interval"] == 0:
+            log_interval = self.config["logging"].get("log_every_n_steps", 100)
+            if self.writer and batch_idx % log_interval == 0:
                 self.writer.add_scalar("train/batch_loss", loss.item(), self.global_step)
         
         return {
