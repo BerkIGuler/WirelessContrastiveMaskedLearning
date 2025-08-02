@@ -9,15 +9,14 @@ __version__ = "0.1.0"
 __author__ = "Research Team"
 
 from .models import WiMAE, ContraWiMAE
-from .training import WiMAETrainer, ContraWiMAETrainer
+from .training import BaseTrainer
 from .encoding import Encoder
 from .downstream import BeamPredictionTask, LOSClassificationTask
 
 __all__ = [
     "WiMAE",
     "ContraWiMAE", 
-    "WiMAETrainer",
-    "ContraWiMAETrainer",
+    "BaseTrainer",
     "Encoder",
     "BeamPredictionTask",
     "LOSClassificationTask",
