@@ -4,6 +4,8 @@ checkpoints/
 
 # do not ignore 
 !data/.gitkeep
+!data/test/.gitkeep
+!data/pretrain/.gitkeep
 !checkpoints/.gitkeep
 !checkpoints/wimae/.gitkeep
 !checkpoints/contrawimae/.gitkeep
