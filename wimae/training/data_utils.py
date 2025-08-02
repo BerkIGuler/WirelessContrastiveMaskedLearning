@@ -420,7 +420,7 @@ class MultiNPZDataset(Dataset):
             
         # Use memory mapping
         with np.load(self.npz_files[file_idx], mmap_mode='r') as data:
-            channel_matrix = torch.from_numpy(data['channels'][local_idx][0])
+            channel_matrix = torch.from_numpy(data['channels'][local_idx][0]).to(torch.complex64)
 
             if self.normalize:
                 channel_matrix = normalize_complex_matrix(channel_matrix, self.statistics)
