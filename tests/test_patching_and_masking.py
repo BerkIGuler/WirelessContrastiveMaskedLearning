@@ -85,7 +85,7 @@ class TestPatching:
     def test_patcher_non_divisible_dimensions(self):
         """Test patching with dimensions that don't divide evenly."""
         # Create input with dimensions that don't divide evenly by patch size
-        batch_size = 2
+        batch_size = 4
         height, width = 30, 30  # Not divisible by 16
         real = torch.randn(batch_size, height, width)
         imag = torch.randn(batch_size, height, width)
@@ -100,7 +100,7 @@ class TestPatching:
     def test_patcher_edge_cases(self):
         """Test patching with edge cases."""
         # Test with patch size equal to input size
-        batch_size = 2
+        batch_size = 4
         height, width = 1, 16
         real = torch.randn(batch_size, height, width)
         imag = torch.randn(batch_size, height, width)

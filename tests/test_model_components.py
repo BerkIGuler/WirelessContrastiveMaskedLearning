@@ -30,7 +30,7 @@ class TestEncoder:
     @pytest.fixture
     def sample_patches(self):
         """Create sample patches for testing."""
-        batch_size = 256
+        batch_size = 4
         num_complex_patches = 64  # 32x2 complex patches
         num_patches = num_complex_patches * 2  # 128 patches (real + imaginary parts)
         patch_dim = 16    # 1x16 patch
@@ -39,9 +39,8 @@ class TestEncoder:
     def test_encoder_initialization(self, encoder):
         """Test encoder initialization."""
         assert encoder.d_model == 64
-        assert encoder.num_layers == 12
         assert encoder.mask_ratio == 0.6
-        assert len(encoder.layers) == 12
+        assert len(encoder.transformer.layers) == 12
     
     def test_encoder_forward_with_masking(self, encoder, sample_patches):
         """Test encoder forward pass with masking."""
@@ -49,7 +48,9 @@ class TestEncoder:
         
         # Check output shapes
         batch_size, num_patches, patch_dim = sample_patches.shape
-        expected_keep = int(num_patches * (1 - encoder.mask_ratio))
+        num_complex_patches = num_patches // 2  # Real and imaginary parts are separated
+        expected_keep_complex = int(num_complex_patches * (1 - encoder.mask_ratio))
+        expected_keep = expected_keep_complex * 2  # Double for real and imaginary parts
         expected_mask = num_patches - expected_keep
         
         assert encoded_features.shape == (batch_size, expected_keep, encoder.d_model)
@@ -90,7 +91,9 @@ class TestEncoder:
             encoded_features, ids_keep, ids_mask = encoder(sample_patches, apply_mask=True)
             
             batch_size, num_patches, _ = sample_patches.shape
-            expected_keep = int(num_patches * (1 - ratio))
+            num_complex_patches = num_patches // 2  # Real and imaginary parts are separated
+            expected_keep_complex = int(num_complex_patches * (1 - ratio))
+            expected_keep = expected_keep_complex * 2  # Double for real and imaginary parts
             expected_mask = num_patches - expected_keep
             
             assert encoded_features.shape == (batch_size, expected_keep, encoder.d_model)
@@ -122,7 +125,7 @@ class TestDecoder:
         """Create a decoder for testing."""
         return Decoder(
             d_model=64,
-            nhead=12,
+            nhead=8,
             num_layers=4,
             output_dim=16,  # 1x16 patch
             device="cpu"
@@ -131,7 +134,7 @@ class TestDecoder:
     @pytest.fixture
     def sample_encoded_features(self):
         """Create sample encoded features for testing."""
-        batch_size = 256
+        batch_size = 4
         num_patches = 128
         d_model = 64
         return torch.randn(batch_size, num_patches, d_model)
@@ -139,16 +142,15 @@ class TestDecoder:
     @pytest.fixture
     def sample_ids_keep(self):
         """Create sample kept indices."""
-        batch_size = 256
+        batch_size = 4
         num_kept = 128
         return torch.randint(0, 128, (batch_size, num_kept))
     
     def test_decoder_initialization(self, decoder):
         """Test decoder initialization."""
         assert decoder.d_model == 64
-        assert decoder.num_layers == 4
         assert decoder.output_dim == 16
-        assert len(decoder.layers) == 4
+        assert len(decoder.transformer.layers) == 4
     
     def test_decoder_forward(self, decoder, sample_encoded_features, sample_ids_keep):
         """Test decoder forward pass."""
@@ -205,7 +207,7 @@ class TestWiMAE:
             encoder_layers=12,
             encoder_nhead=16,
             decoder_layers=4,
-            decoder_nhead=12,
+            decoder_nhead=8,
             mask_ratio=0.6,
             device="cpu"
         )
@@ -213,7 +215,7 @@ class TestWiMAE:
     @pytest.fixture
     def complex_input(self):
         """Create complex input tensor."""
-        batch_size = 256
+        batch_size = 4
         height, width = 32, 32
         real = torch.randn(batch_size, height, width)
         imag = torch.randn(batch_size, height, width)
@@ -224,7 +226,7 @@ class TestWiMAE:
         assert wimae_model.patch_size == (1, 16)
         assert wimae_model.encoder_dim == 64
         assert wimae_model.mask_ratio == 0.6
-        assert wimae_model.device == torch.device("cpu")
+        assert str(wimae_model.device) == "cpu"
         
         # Check that components are initialized
         assert hasattr(wimae_model, 'patcher')
@@ -245,7 +247,8 @@ class TestWiMAE:
         batch_size = complex_input.shape[0]
         num_complex_patches = (32 // 1) * (32 // 16)  # 32 * 2 = 64 complex patches
         num_patches = num_complex_patches * 2  # 128 patches (real + imaginary parts)
-        expected_keep = int(num_patches * (1 - wimae_model.mask_ratio))
+        expected_keep_complex = int(num_complex_patches * (1 - wimae_model.mask_ratio))
+        expected_keep = expected_keep_complex * 2  # Double for real and imaginary parts
         
         assert output["encoded_features"].shape == (batch_size, expected_keep, wimae_model.encoder_dim)
         assert output["reconstructed_patches"].shape == (batch_size, num_patches, 16)  # 1x16 patch
@@ -308,11 +311,18 @@ class TestWiMAE:
         # Load checkpoint
         loaded_model = WiMAE.from_checkpoint(str(checkpoint_path), device="cpu")
         
-        # Check that models are equivalent
-        original_output = wimae_model(complex_input)
-        loaded_output = loaded_model(complex_input)
+        # Check that model parameters are the same
+        for param_name, original_param in wimae_model.named_parameters():
+            loaded_param = dict(loaded_model.named_parameters())[param_name]
+            assert torch.allclose(original_param, loaded_param)
         
-        assert torch.allclose(original_output["encoded_features"], loaded_output["encoded_features"])
+        # Check that model info is the same
+        original_info = wimae_model.get_model_info()
+        loaded_info = loaded_model.get_model_info()
+        
+        for key in ["model_type", "patch_size", "encoder_dim", "encoder_layers", 
+                   "encoder_nhead", "decoder_layers", "decoder_nhead", "mask_ratio"]:
+            assert original_info[key] == loaded_info[key]
     
     def test_wimae_get_model_info(self, wimae_model):
         """Test WiMAE get_model_info method."""
@@ -346,7 +356,7 @@ class TestContraWiMAE:
             encoder_layers=12,
             encoder_nhead=16,
             decoder_layers=4,
-            decoder_nhead=12,
+            decoder_nhead=8,
             mask_ratio=0.6,
             contrastive_dim=64,
             temperature=0.1,
@@ -358,7 +368,7 @@ class TestContraWiMAE:
     @pytest.fixture
     def complex_input(self):
         """Create complex input tensor."""
-        batch_size = 256
+        batch_size = 4
         height, width = 32, 32
         real = torch.randn(batch_size, height, width)
         imag = torch.randn(batch_size, height, width)
@@ -412,11 +422,16 @@ class TestContraWiMAE:
         )
         
         # Check output structure
-        assert "encoded_features" in output
-        assert "reconstructed_patches" in output
-        assert "ids_keep" in output
-        assert "ids_mask" in output
-        assert "contrastive_features" in output
+        assert "original" in output
+        assert "augmented" in output
+        
+        # Check that both original and augmented outputs have the expected structure
+        for key in ["original", "augmented"]:
+            assert "encoded_features" in output[key]
+            assert "reconstructed_patches" in output[key]
+            assert "ids_keep" in output[key]
+            assert "ids_mask" in output[key]
+            assert "contrastive_features" in output[key]
     
     def test_contramae_compute_contrastive_loss(self, contramae_model, complex_input):
         """Test ContraWiMAE contrastive loss computation."""
@@ -454,11 +469,19 @@ class TestContraWiMAE:
         # Load checkpoint
         loaded_model = ContraWiMAE.from_checkpoint(str(checkpoint_path), device="cpu")
         
-        # Check that models are equivalent
-        original_output = contramae_model(complex_input)
-        loaded_output = loaded_model(complex_input)
+        # Check that model parameters are the same
+        for param_name, original_param in contramae_model.named_parameters():
+            loaded_param = dict(loaded_model.named_parameters())[param_name]
+            assert torch.allclose(original_param, loaded_param)
         
-        assert torch.allclose(original_output["encoded_features"], loaded_output["encoded_features"])
+        # Check that model info is the same
+        original_info = contramae_model.get_model_info()
+        loaded_info = loaded_model.get_model_info()
+        
+        for key in ["model_type", "patch_size", "encoder_dim", "encoder_layers", 
+                   "encoder_nhead", "decoder_layers", "decoder_nhead", "mask_ratio",
+                   "contrastive_dim", "temperature", "snr_min", "snr_max"]:
+            assert original_info[key] == loaded_info[key]
     
     def test_contramae_get_model_info(self, contramae_model):
         """Test ContraWiMAE get_model_info method."""

@@ -21,7 +21,7 @@ class TestContrastiveHead:
     @pytest.fixture
     def sample_features(self):
         """Create sample encoded features."""
-        batch_size = 8
+        batch_size = 4
         seq_len = 64
         feature_dim = 128
         return torch.randn(batch_size, seq_len, feature_dim)
@@ -127,7 +127,7 @@ class TestContrastiveLoss:
     @pytest.fixture
     def sample_embeddings(self):
         """Create sample embeddings for testing."""
-        batch_size = 8
+        batch_size = 4
         embed_dim = 64
         return torch.randn(batch_size, embed_dim)
     

@@ -26,6 +26,9 @@ class ContrastiveHead(nn.Module):
         """
         super().__init__()
         
+        self.input_dim = input_dim
+        self.proj_dim = proj_dim
+        
         self.proj_head = nn.Sequential(
             nn.Linear(input_dim, proj_dim * 2),
             nn.ReLU(),

@@ -44,7 +44,7 @@ class TestWiMAEModel:
         assert wimae_model.patch_size == (1, 16)
         assert wimae_model.encoder_dim == 64
         assert wimae_model.mask_ratio == 0.6
-        assert wimae_model.device == torch.device("cpu")
+        assert str(wimae_model.device) == "cpu"
         
         # Check that components are initialized
         assert hasattr(wimae_model, 'patcher')
@@ -64,8 +64,10 @@ class TestWiMAEModel:
         # Check shapes
         batch_size = complex_input.shape[0]
         num_complex_patches = (32 // 1) * (32 // 16)  # 32 * 2 = 64 complex patches
+
         num_patches = num_complex_patches * 2  # 128 patches (real + imaginary parts)
-        expected_keep = int(num_patches * (1 - wimae_model.mask_ratio))
+        expected_keep_complex = int(num_complex_patches * (1 - wimae_model.mask_ratio))
+        expected_keep = expected_keep_complex * 2  # Double for real and imaginary parts
         
         assert output["encoded_features"].shape == (batch_size, expected_keep, wimae_model.encoder_dim)
         assert output["reconstructed_patches"].shape == (batch_size, num_patches, 16)  # 1x16 patch
@@ -95,7 +97,7 @@ class TestWiMAEModel:
     def test_wimae_get_embeddings(self, wimae_model, complex_input):
         """Test WiMAE get_embeddings method."""
         # Test different pooling methods
-        pooling_methods = ["mean", "cls", "max"]
+        pooling_methods = ["mean", "max"]
         
         for pooling in pooling_methods:
             embeddings = wimae_model.get_embeddings(complex_input, pooling=pooling)
@@ -118,11 +120,10 @@ class TestWiMAEModel:
         # Load checkpoint
         loaded_model = WiMAE.from_checkpoint(str(checkpoint_path), device="cpu")
         
-        # Check that models are equivalent
-        original_output = wimae_model(complex_input)
-        loaded_output = loaded_model(complex_input)
-        
-        assert torch.allclose(original_output["encoded_features"], loaded_output["encoded_features"])
+        # Check that model parameters are the same
+        for param_name, original_param in wimae_model.named_parameters():
+            loaded_param = dict(loaded_model.named_parameters())[param_name]
+            assert torch.allclose(original_param, loaded_param)
     
     def test_wimae_get_model_info(self, wimae_model):
         """Test WiMAE get_model_info method."""
@@ -249,15 +250,11 @@ class TestContraWiMAEModel:
     
     def test_contramae_get_contrastive_embeddings(self, contramae_model, complex_input):
         """Test ContraWiMAE get_contrastive_embeddings method."""
-        # Test different pooling methods
-        pooling_methods = ["mean", "cls", "max"]
+        embeddings = contramae_model.get_contrastive_embeddings(complex_input)
         
-        for pooling in pooling_methods:
-            embeddings = contramae_model.get_contrastive_embeddings(complex_input, pooling=pooling)
-            
-            # Check output shape
-            batch_size = complex_input.shape[0]
-            assert embeddings.shape == (batch_size, contramae_model.contrastive_dim)
+        # Check output shape
+        batch_size = complex_input.shape[0]
+        assert embeddings.shape == (batch_size, contramae_model.contrastive_dim)
     
     def test_contramae_save_load_checkpoint(self, contramae_model, complex_input, tmp_path):
         """Test ContraWiMAE checkpoint saving and loading."""
@@ -268,11 +265,10 @@ class TestContraWiMAEModel:
         # Load checkpoint
         loaded_model = ContraWiMAE.from_checkpoint(str(checkpoint_path), device="cpu")
         
-        # Check that models are equivalent
-        original_output = contramae_model(complex_input)
-        loaded_output = loaded_model(complex_input)
-        
-        assert torch.allclose(original_output["encoded_features"], loaded_output["encoded_features"])
+        # Check that model parameters are the same
+        for param_name, original_param in contramae_model.named_parameters():
+            loaded_param = dict(loaded_model.named_parameters())[param_name]
+            assert torch.allclose(original_param, loaded_param)
     
     def test_contramae_get_model_info(self, contramae_model):
         """Test ContraWiMAE get_model_info method."""

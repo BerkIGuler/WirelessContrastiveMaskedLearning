@@ -69,6 +69,9 @@ class ContraWiMAE(WiMAE):
             proj_dim=contrastive_dim,
         ).to(self.device)
         
+        # Store contrastive dimension
+        self.contrastive_dim = contrastive_dim
+        
         # Augmentation parameters
         self.snr_min = snr_min
         self.snr_max = snr_max
@@ -173,11 +176,14 @@ class ContraWiMAE(WiMAE):
         Args:
             features1: First set of features
             features2: Second set of features
-            temperature: Temperature parameter
+            temperature: Temperature parameter (uses self.temperature if None)
             
         Returns:
             Contrastive loss
         """
+        if temperature is None:
+            temperature = self.temperature
+            
         return self.contrastive_head.compute_contrastive_loss(
             features1, features2, temperature
         )
@@ -209,10 +215,10 @@ class ContraWiMAE(WiMAE):
             "model_state_dict": self.state_dict(),
             "patch_size": self.patch_size,
             "encoder_dim": self.encoder_dim,
-            "encoder_layers": self.encoder.num_layers,
-            "encoder_nhead": self.encoder.layers[0].self_attn.num_heads,
-            "decoder_layers": self.decoder.num_layers,
-            "decoder_nhead": self.decoder.layers[0].self_attn.num_heads,
+            "encoder_layers": len(self.encoder.transformer.layers),
+            "encoder_nhead": self.encoder.transformer.layers[0].self_attn.num_heads,
+            "decoder_layers": len(self.decoder.transformer.layers),
+            "decoder_nhead": self.decoder.transformer.layers[0].self_attn.num_heads,
             "mask_ratio": self.mask_ratio,
             "contrastive_dim": self.contrastive_head.proj_dim,
             "temperature": self.temperature,
