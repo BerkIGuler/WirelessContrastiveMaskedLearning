@@ -15,7 +15,8 @@ from typing import List, Dict, Any, Tuple, Optional
 
 def setup_dataloaders(config_path: str, data_dir: str, batch_size: int, 
                      num_workers: int = 4, normalize: bool = False,
-                     val_split: float = 0.2, debug_size: Optional[int] = None):
+                     val_split: float = 0.2, debug_size: Optional[int] = None,
+                     calculate_statistics: bool = False):
     """
     Set up train and validation dataloaders based on scenario split config.
 
@@ -27,15 +28,49 @@ def setup_dataloaders(config_path: str, data_dir: str, batch_size: int,
         normalize: Whether to normalize the data
         val_split: Validation split ratio
         debug_size: If provided, use only this many samples for debugging
+        calculate_statistics: If True, calculate statistics from training data.
+                             If False, use statistics from config if available.
 
     Returns:
-        train_loader, val_loader, train_size, val_size
+        train_loader, val_loader, train_size, val_size, statistics
     """
     # Load the config file
     with open(config_path, 'r') as f:
         config = yaml.safe_load(f)
 
-    statistics = config.get('train_statistics', None)
+    statistics = None
+    
+    if calculate_statistics:
+        print("Calculating statistics from training data...")
+        # Create a temporary dataset to calculate statistics
+        temp_train_dataset = ScenarioSplitDataset(
+            data_dir=data_dir,
+            config_path=config_path,
+            split='train',
+            normalize=False,  # Don't normalize for statistics calculation
+            statistics=None
+        )
+        
+        # Create a small dataloader for statistics calculation
+        temp_loader = create_efficient_dataloader(
+            temp_train_dataset, 
+            batch_size=min(batch_size, 256),  # Use smaller batch size for stats
+            num_workers=min(num_workers, 2),  # Use fewer workers for stats
+            shuffle=False
+        )
+        
+        statistics = calculate_complex_statistics(temp_loader)
+        print(f"Calculated statistics: {statistics}")
+        
+        # Clean up temporary dataset
+        del temp_train_dataset, temp_loader
+    else:
+        # Use statistics from config if available
+        statistics = config.get('data', {}).get('statistics', None)
+        if statistics:
+            print(f"Using pre-computed statistics: {statistics}")
+        else:
+            print("No statistics provided and calculate_statistics=False. Data will not be normalized.")
 
     # Create datasets
     train_dataset = ScenarioSplitDataset(
@@ -77,7 +112,198 @@ def setup_dataloaders(config_path: str, data_dir: str, batch_size: int,
         val_dataset, batch_size=batch_size,
         num_workers=num_workers, shuffle=False)
 
-    return train_loader, val_loader, len(train_dataset), len(val_dataset)
+    return train_loader, val_loader, len(train_dataset), len(val_dataset), statistics
+
+
+def setup_scenario_dataloaders(config_path: str, data_dir: str, batch_size: int, 
+                              num_workers: int = 4, normalize: bool = False,
+                              debug_size: Optional[int] = None,
+                              calculate_statistics: bool = False,
+                              include_test: bool = False):
+    """
+    Set up train, validation, and optionally test dataloaders based on scenario split config.
+
+    Args:
+        config_path: Path to YAML config with scenario split patterns
+        data_dir: Directory containing the NPZ files
+        batch_size: Batch size for dataloaders
+        num_workers: Number of workers for data loading
+        normalize: Whether to normalize the data
+        debug_size: If provided, use only this many samples for debugging
+        calculate_statistics: If True, calculate statistics from training data.
+                             If False, use statistics from config if available.
+        include_test: If True, also create test dataloader
+
+    Returns:
+        train_loader, val_loader, test_loader (if include_test=True), 
+        train_size, val_size, test_size (if include_test=True), statistics
+    """
+    # Load the config file
+    with open(config_path, 'r') as f:
+        config = yaml.safe_load(f)
+
+    statistics = None
+    
+    if calculate_statistics:
+        print("Calculating statistics from training data...")
+        # Create a temporary dataset to calculate statistics
+        temp_train_dataset = ScenarioSplitDataset(
+            data_dir=data_dir,
+            config_path=config_path,
+            split='train',
+            normalize=False,  # Don't normalize for statistics calculation
+            statistics=None
+        )
+        
+        # Create a small dataloader for statistics calculation
+        temp_loader = create_efficient_dataloader(
+            temp_train_dataset, 
+            batch_size=min(batch_size, 256),  # Use smaller batch size for stats
+            num_workers=min(num_workers, 2),  # Use fewer workers for stats
+            shuffle=False
+        )
+        
+        statistics = calculate_complex_statistics(temp_loader)
+        print(f"Calculated statistics: {statistics}")
+        
+        # Clean up temporary dataset
+        del temp_train_dataset, temp_loader
+    else:
+        # Use statistics from config if available
+        statistics = config.get('data', {}).get('statistics', None)
+        if statistics:
+            print(f"Using pre-computed statistics: {statistics}")
+        else:
+            print("No statistics provided and calculate_statistics=False. Data will not be normalized.")
+
+    # Create datasets
+    train_dataset = ScenarioSplitDataset(
+        data_dir=data_dir,
+        config_path=config_path,
+        split='train',
+        normalize=normalize,
+        statistics=statistics
+    )
+
+    val_dataset = ScenarioSplitDataset(
+        data_dir=data_dir,
+        config_path=config_path,
+        split='val',
+        normalize=normalize,
+        statistics=statistics
+    )
+
+    # Apply debug size if specified
+    if debug_size is not None:
+        train_size = min(debug_size, len(train_dataset))
+        val_size = min(debug_size // 4, len(val_dataset))  # Use 1/4 for validation
+        
+        train_dataset, _ = random_split(
+            train_dataset, 
+            [train_size, len(train_dataset) - train_size],
+            generator=torch.Generator().manual_seed(42)
+        )
+        val_dataset, _ = random_split(
+            val_dataset, 
+            [val_size, len(val_dataset) - val_size],
+            generator=torch.Generator().manual_seed(42)
+        )
+
+    train_loader = create_efficient_dataloader(
+        train_dataset, batch_size=batch_size,
+        num_workers=num_workers, shuffle=True)
+    val_loader = create_efficient_dataloader(
+        val_dataset, batch_size=batch_size,
+        num_workers=num_workers, shuffle=False)
+
+    if include_test:
+        test_dataset = ScenarioSplitDataset(
+            data_dir=data_dir,
+            config_path=config_path,
+            split='test',
+            normalize=normalize,
+            statistics=statistics
+        )
+        
+        if debug_size is not None:
+            test_size = min(debug_size // 4, len(test_dataset))
+            test_dataset, _ = random_split(
+                test_dataset, 
+                [test_size, len(test_dataset) - test_size],
+                generator=torch.Generator().manual_seed(42)
+            )
+        
+        test_loader = create_efficient_dataloader(
+            test_dataset, batch_size=batch_size,
+            num_workers=num_workers, shuffle=False)
+        
+        return (train_loader, val_loader, test_loader, 
+                len(train_dataset), len(val_dataset), len(test_dataset), statistics)
+    else:
+        return train_loader, val_loader, len(train_dataset), len(val_dataset), statistics
+
+
+def setup_simple_dataloaders(npz_files: List[str], batch_size: int, 
+                           num_workers: int = 4, normalize: bool = False,
+                           calculate_statistics: bool = False,
+                           statistics: Optional[Dict[str, float]] = None,
+                           val_split: float = 0.2):
+    """
+    Set up simple train and validation dataloaders using OptimizedPreloadedDataset.
+
+    Args:
+        npz_files: List of NPZ file paths
+        batch_size: Batch size for dataloaders
+        num_workers: Number of workers for data loading
+        normalize: Whether to normalize the data
+        calculate_statistics: If True, calculate statistics from all data.
+                             If False, use provided statistics.
+        statistics: Pre-computed statistics (used if calculate_statistics=False)
+        val_split: Validation split ratio
+
+    Returns:
+        train_loader, val_loader, train_size, val_size, statistics
+    """
+    if calculate_statistics:
+        print("Calculating statistics from all data...")
+        # Create a temporary dataset to calculate statistics
+        temp_dataset = OptimizedPreloadedDataset(npz_files, normalize=False)
+        temp_loader = create_efficient_dataloader(
+            temp_dataset, 
+            batch_size=min(batch_size, 256),
+            num_workers=min(num_workers, 2),
+            shuffle=False
+        )
+        statistics = calculate_complex_statistics(temp_loader)
+        print(f"Calculated statistics: {statistics}")
+        del temp_dataset, temp_loader
+    elif statistics:
+        print(f"Using provided statistics: {statistics}")
+    else:
+        print("No statistics provided and calculate_statistics=False. Data will not be normalized.")
+
+    # Create full dataset
+    full_dataset = OptimizedPreloadedDataset(npz_files, normalize=normalize, statistics=statistics)
+    
+    # Split into train and validation
+    total_size = len(full_dataset)
+    val_size = int(total_size * val_split)
+    train_size = total_size - val_size
+    
+    train_dataset, val_dataset = random_split(
+        full_dataset, 
+        [train_size, val_size],
+        generator=torch.Generator().manual_seed(42)
+    )
+
+    train_loader = create_efficient_dataloader(
+        train_dataset, batch_size=batch_size,
+        num_workers=num_workers, shuffle=True)
+    val_loader = create_efficient_dataloader(
+        val_dataset, batch_size=batch_size,
+        num_workers=num_workers, shuffle=False)
+
+    return train_loader, val_loader, train_size, val_size, statistics
 
 
 def create_efficient_dataloader(dataset: Dataset, batch_size: int = 1024, 
@@ -213,8 +439,8 @@ class ScenarioSplitDataset(Dataset):
             self.config = yaml.safe_load(f)
 
         # Get the appropriate file patterns for the requested split
-        if split not in ['train', 'val']:
-            raise ValueError(f"Split must be 'train' or 'val', got {split}")
+        if split not in ['train', 'val', 'test']:
+            raise ValueError(f"Split must be 'train', 'val', or 'test', got {split}")
 
         # Get all NPZ files in the data directory
         all_files = [f for f in os.listdir(data_dir) if f.endswith('.npz')]

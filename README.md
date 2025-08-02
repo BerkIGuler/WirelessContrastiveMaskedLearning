@@ -26,6 +26,90 @@ The training pipeline expects NPZ files containing complex channel matrices:
 - The data should be complex-valued (real + imaginary parts)
 - Files should be placed in a directory specified by `data_dir` in the config
 
+### Data Normalization
+
+The system supports two approaches for data normalization:
+
+#### 1. On-the-Fly Statistics Calculation
+Calculate normalization statistics from the training data:
+```yaml
+data:
+  normalize: true
+  calculate_statistics: true  # Calculate from training data
+```
+
+#### 2. Pre-Computed Statistics
+Use provided statistics for consistent normalization:
+```yaml
+data:
+  normalize: true
+  calculate_statistics: false  # Use provided statistics
+  statistics:
+    real_mean: 0.021121172234416008
+    real_std: 30.7452392578125
+    imag_mean: -0.01027622725814581
+    imag_std: 30.70543670654297
+```
+
+**Benefits of each approach:**
+- **On-the-fly**: Works with any dataset, no pre-computation needed
+- **Pre-computed**: Faster startup, consistent normalization across experiments
+
+### Scenario-Based Data Splitting
+
+The system supports scenario-based train/validation splits using regex patterns:
+
+#### Configuration Structure
+```yaml
+# configs/scenario_split_test.yaml
+# Training patterns (regex)
+train_patterns:
+  - "urban.*\.npz"           # All urban scenario files
+  - "city.*\.npz"            # City environment files
+  - "indoor.*\.npz"          # Indoor environment files
+
+# Validation patterns (regex)
+val_patterns:
+  - "rural.*\.npz"           # Rural environment files
+  - "highway.*\.npz"         # Highway environment files
+
+# Test patterns (regex)
+test_patterns:
+  - "mixed.*\.npz"           # Mixed environment files
+  - "test.*\.npz"            # Test scenario files
+```
+
+#### Usage
+```python
+from wimae.training.data_utils import setup_dataloaders, setup_scenario_dataloaders
+
+# Train/Val only
+train_loader, val_loader, train_size, val_size, statistics = setup_dataloaders(
+    config_path="configs/scenario_split_test.yaml",
+    data_dir="data/pretrain",
+    batch_size=32,
+    calculate_statistics=True
+)
+
+# Train/Val/Test
+train_loader, val_loader, test_loader, train_size, val_size, test_size, statistics = setup_scenario_dataloaders(
+    config_path="configs/scenario_split_test.yaml",
+    data_dir="data/pretrain",
+    batch_size=32,
+    calculate_statistics=True,
+    include_test=True
+)
+```
+
+#### Test Data Creation
+```bash
+# Create test NPZ files with various naming patterns
+python examples/create_test_data.py
+
+# Run data loading examples
+python examples/data_loading_examples.py
+```
+
 ### Default Configuration
 
 The default configuration (`configs/default_training.yaml`) includes:
@@ -167,20 +251,7 @@ git push --no-verify
 
 When cloning the repository, the hook should be automatically active. If you need to set it up manually:
 
-```bash
-# Make the hook executable
-chmod +x .git/hooks/pre-push
-```
-
-#### Environment Requirements
-
-The hook works with any Python environment that has the required packages:
-- pytest
-- torch
-- numpy
-- PyYAML (yaml)
-- tqdm
-- scikit-learn (sklearn)
+```bash.
 
 It doesn't assume a specific conda environment name, so it works across different developer setups.
 

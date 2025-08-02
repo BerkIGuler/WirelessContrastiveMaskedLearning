@@ -1,0 +1,39 @@
+# Simple Scenario Split Configuration
+# This config uses simple patterns for basic testing
+
+# Training patterns - use first 7 files (0-6)
+train_patterns:
+  - "data_[0-6]\.npz"        # Files 0-6 for training
+  - "train_.*\.npz"          # Any files starting with "train_"
+  - ".*_train.*\.npz"        # Any files containing "_train"
+
+# Validation patterns - use files 7-8
+val_patterns:
+  - "data_[78]\.npz"         # Files 7-8 for validation
+  - "val_.*\.npz"            # Any files starting with "val_"
+  - ".*_val.*\.npz"          # Any files containing "_val"
+
+# Test patterns - use file 9
+test_patterns:
+  - "data_9\.npz"            # File 9 for testing
+  - "test_.*\.npz"           # Any files starting with "test_"
+  - ".*_test.*\.npz"         # Any files containing "_test"
+
+# Alternative patterns for different naming conventions:
+# Uncomment the section that matches your file naming:
+
+# For files named: channel_001.npz, channel_002.npz, etc.
+# train_patterns:
+#   - "channel_00[1-7]\.npz"  # Files 001-007 for training
+# val_patterns:
+#   - "channel_00[89]\.npz"   # Files 008-009 for validation
+# test_patterns:
+#   - "channel_010\.npz"      # File 010 for testing
+
+# For files named: urban_1.npz, rural_1.npz, etc.
+# train_patterns:
+#   - "urban_.*\.npz"         # All urban files for training
+# val_patterns:
+#   - "rural_.*\.npz"         # All rural files for validation
+# test_patterns:
+#   - "mixed_.*\.npz"         # All mixed files for testing 

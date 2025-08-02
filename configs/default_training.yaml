@@ -23,7 +23,11 @@ data:
   val_split: 0.2
   debug_size: null  # Set to a number for debugging (e.g., 1000)
   
-  # Statistics for normalization (default values)
+  # Statistics handling options:
+  # Option 1: Calculate statistics on-the-fly from training data
+  calculate_statistics: false  # Set to true to calculate from data
+  
+  # Option 2: Use pre-computed statistics (used if calculate_statistics=false)
   statistics:
     real_mean: 0.021121172234416008
     real_std: 30.7452392578125
