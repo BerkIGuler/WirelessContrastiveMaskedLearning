@@ -1,12 +1,12 @@
+# ignore data files
+data/
+checkpoints/
+
 # do not ignore 
 !data/.gitkeep
 !checkpoints/.gitkeep
 !checkpoints/wimae/.gitkeep
 !checkpoints/contrawimae/.gitkeep
-
-# ignore data files
-data/
-checkpoints/
 
 
 # Byte-compiled / optimized / DLL files
@@ -141,7 +141,6 @@ dmypy.json
 
 # Project specific
 runs/
-checkpoints/
 embeddings/
 results/
 *.pt
