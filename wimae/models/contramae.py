@@ -27,7 +27,7 @@ class ContraWiMAE(WiMAE):
         encoder_nhead: int = 8,
         decoder_layers: int = 8,
         decoder_nhead: int = 8,
-        mask_ratio: float = 0.75,
+        mask_ratio: float = 0.6,
         contrastive_dim: int = 256,
         temperature: float = 0.1,
         snr_min: float = 0.0,

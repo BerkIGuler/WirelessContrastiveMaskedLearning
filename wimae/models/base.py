@@ -25,7 +25,7 @@ class WiMAE(nn.Module):
         encoder_nhead: int = 8,
         decoder_layers: int = 8,
         decoder_nhead: int = 8,
-        mask_ratio: float = 0.75,
+        mask_ratio: float = 0.6,
         device: Optional[torch.device] = None,
     ):
         """

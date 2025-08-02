@@ -6,7 +6,7 @@ import torch
 
 
 class MaskGenerator:
-    def __init__(self, device, mask_ratio=0.75, random_seed=42):
+    def __init__(self, device, mask_ratio=0.6, random_seed=42):
         self.mask_ratio = mask_ratio
         self.generator = torch.Generator(device=device)
         self.generator.manual_seed(random_seed if random_seed is not None else torch.seed())

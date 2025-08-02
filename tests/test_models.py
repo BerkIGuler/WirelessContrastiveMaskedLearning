@@ -25,7 +25,7 @@ class TestWiMAEModel:
             encoder_layers=12,
             encoder_nhead=16,
             decoder_layers=4,
-            decoder_nhead=12,
+            decoder_nhead=8,
             mask_ratio=0.6,
             device="cpu"
         )
@@ -157,7 +157,7 @@ class TestContraWiMAEModel:
             encoder_layers=12,
             encoder_nhead=16,
             decoder_layers=4,
-            decoder_nhead=12,
+            decoder_nhead=8,
             mask_ratio=0.6,
             contrastive_dim=64,
             temperature=0.1,
@@ -223,11 +223,16 @@ class TestContraWiMAEModel:
         )
         
         # Check output structure
-        assert "encoded_features" in output
-        assert "reconstructed_patches" in output
-        assert "ids_keep" in output
-        assert "ids_mask" in output
-        assert "contrastive_features" in output
+        assert "original" in output
+        assert "augmented" in output
+        
+        # Check that both original and augmented outputs have the expected structure
+        for key in ["original", "augmented"]:
+            assert "encoded_features" in output[key]
+            assert "reconstructed_patches" in output[key]
+            assert "ids_keep" in output[key]
+            assert "ids_mask" in output[key]
+            assert "contrastive_features" in output[key]
     
     def test_contramae_compute_contrastive_loss(self, contramae_model, complex_input):
         """Test ContraWiMAE contrastive loss computation."""
@@ -333,7 +338,7 @@ class TestDataIntegration:
             encoder_layers=12,
             encoder_nhead=16,
             decoder_layers=4,
-            decoder_nhead=12,
+            decoder_nhead=8,
             mask_ratio=0.6,
             device="cpu"
         )

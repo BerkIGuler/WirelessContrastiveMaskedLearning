@@ -24,7 +24,7 @@ class Encoder(nn.Module):
         d_model: int = 256,
         nhead: int = 16,
         activation: str = "gelu",
-        mask_ratio: float = 0.75,
+        mask_ratio: float = 0.6,
         dropout: float = 0.1,
         num_layers: int = 12,
         max_len: int = 128,
