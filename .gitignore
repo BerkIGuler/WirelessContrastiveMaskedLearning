@@ -1,6 +1,8 @@
 # do not ignore 
 !data/.gitkeep
 !checkpoints/.gitkeep
+!checkpoints/wimae/.gitkeep
+!checkpoints/contrawimae/.gitkeep
 
 # ignore data files
 data/
