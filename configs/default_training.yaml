@@ -83,4 +83,5 @@ training:
 logging:
   log_dir: "runs"
   tensorboard: true
-  log_every_n_steps: 100 
+  log_every_n_steps: 100
+  exp_name: "training_demo"  # Optional: custom experiment name, otherwise uses timestamp 

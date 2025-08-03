@@ -69,10 +69,12 @@ print(f"Learning rate: {config['training']['optimizer']['lr']}")
 config['training']['epochs'] = 10
 config['training']['batch_size'] = 32
 config['data']['debug_size'] = 1000  # Use smaller dataset for demo
+config['logging']['exp_name'] = 'demo_run'  # Custom experiment name
 print(f"\nAdjusted for demo:")
 print(f"Epochs: {config['training']['epochs']}")
 print(f"Batch size: {config['training']['batch_size']}")
 print(f"Debug size: {config['data']['debug_size']}")
+print(f"Experiment name: {config['logging']['exp_name']}")
 
 # %%
 # Cell 4: WiMAE Training Setup
