@@ -14,7 +14,8 @@ from typing import List, Dict, Optional
 
 
 def create_efficient_dataloader(dataset: Dataset, batch_size: int = 1024, 
-                               num_workers: int = 4, shuffle: bool = True) -> DataLoader:
+                               num_workers: int = 4, shuffle: bool = True,
+                               pin_memory: bool = True, drop_last: bool = False) -> DataLoader:
     """
     Create an efficient dataloader with multiple workers and prefetching.
 
@@ -23,6 +24,8 @@ def create_efficient_dataloader(dataset: Dataset, batch_size: int = 1024,
         batch_size: Batch size for training
         num_workers: Number of worker processes
         shuffle: Whether to shuffle the data
+        pin_memory: Whether to pin memory for faster GPU transfer
+        drop_last: Whether to drop the last incomplete batch
 
     Returns:
         DataLoader instance
@@ -33,7 +36,8 @@ def create_efficient_dataloader(dataset: Dataset, batch_size: int = 1024,
         'batch_size': batch_size,
         'shuffle': shuffle,
         'num_workers': num_workers,
-        'pin_memory': True,
+        'pin_memory': pin_memory,
+        'drop_last': drop_last,
     }
     
     # Add multiprocessing-specific options only when num_workers > 0

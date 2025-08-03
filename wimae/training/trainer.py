@@ -412,24 +412,56 @@ class BaseTrainer:
             best_path = self.log_dir / "best_checkpoint.pt"
             torch.save(checkpoint, best_path)
     
-    def load_checkpoint(self, checkpoint_path: str):
+    def load_checkpoint(self, checkpoint_path: str, model_only: bool = False, strict: bool = True):
         """
         Load model from checkpoint.
         
         Args:
             checkpoint_path: Path to checkpoint file
+            model_only: If True, only load model weights. If False, load full training state.
+            strict: If False, allows partial loading with warnings for missing/unexpected keys.
         """
         checkpoint = torch.load(checkpoint_path, map_location=self.device)
         
-        self.model.load_state_dict(checkpoint["model_state_dict"])
-        self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+        # Load model weights
+        if strict:
+            self.model.load_state_dict(checkpoint["model_state_dict"])
+        else:
+            missing_keys, unexpected_keys = self.model.load_state_dict(checkpoint["model_state_dict"], strict=False)
+            
+            if missing_keys:
+                print(f"Warning: Missing keys in checkpoint (will remain randomly initialized):")
+                for key in missing_keys:
+                    print(f"  - {key}")
+            
+            if unexpected_keys:
+                print(f"Warning: Unexpected keys in checkpoint (will be ignored):")
+                for key in unexpected_keys:
+                    print(f"  - {key}")
+            
+            if not missing_keys and not unexpected_keys:
+                print("All model weights loaded successfully")
         
-        if checkpoint["scheduler_state_dict"] and self.scheduler:
-            self.scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
-        
-        self.current_epoch = checkpoint["epoch"]
-        self.global_step = checkpoint["global_step"]
-        self.best_val_loss = checkpoint["best_val_loss"]
+        if not model_only:
+            # Load optimizer state if available
+            if "optimizer_state_dict" in checkpoint and self.optimizer:
+                self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+            
+            # Load scheduler state if available
+            if "scheduler_state_dict" in checkpoint and checkpoint["scheduler_state_dict"] and self.scheduler:
+                self.scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
+            
+            # Load training state if available
+            if "epoch" in checkpoint:
+                self.current_epoch = checkpoint["epoch"]
+            if "global_step" in checkpoint:
+                self.global_step = checkpoint["global_step"]
+            if "best_val_loss" in checkpoint:
+                self.best_val_loss = checkpoint["best_val_loss"]
+            
+            print(f"Loaded full training state from epoch {self.current_epoch}")
+        else:
+            print("Loaded model weights only (training state not restored)")
     
     def train(self):
         """

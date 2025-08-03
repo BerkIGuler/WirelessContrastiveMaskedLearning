@@ -352,12 +352,10 @@ class ContraWiMAE(WiMAE):
         
         # 4) Compute the contrastive loss between the encoded visible patches
         # Get contrastive features from visible patches only
-        z_i = self.contrastive_head(orig_encoded)  # Original visible patches
-        z_j = self.contrastive_head(aug_encoded)   # Augmented visible patches
+        z_i = self.contrastive_head(orig_encoded)  # Original visible patches -> (batch_size, contrastive_dim)
+        z_j = self.contrastive_head(aug_encoded)   # Augmented visible patches -> (batch_size, contrastive_dim)
         
-        # Mean pooling for contrastive features
-        z_i = torch.mean(z_i, dim=1)  # (batch_size, contrastive_dim)
-        z_j = torch.mean(z_j, dim=1)  # (batch_size, contrastive_dim)
+        # Note: contrastive_head already performs mean pooling internally
         
         contrastive_loss = self.compute_contrastive_loss(z_i, z_j, temperature=self.temperature)
         
@@ -434,12 +432,10 @@ class ContraWiMAE(WiMAE):
         full_recon_loss = (orig_full_recon_loss + aug_full_recon_loss) / 2
         
         # Contrastive loss (same for both masked and full)
-        orig_features = orig_masked_output["contrastive_features"]
-        aug_features = aug_masked_output["contrastive_features"]
+        orig_features = orig_masked_output["contrastive_features"]  # Already [batch_size, contrastive_dim]
+        aug_features = aug_masked_output["contrastive_features"]   # Already [batch_size, contrastive_dim]
         
-        # Mean pooling for contrastive features
-        orig_features = torch.mean(orig_features, dim=1)
-        aug_features = torch.mean(aug_features, dim=1)
+        # Note: contrastive_features already comes from contrastive_head which does mean pooling internally
         
         contrastive_loss = self.compute_contrastive_loss(
             orig_features, 
