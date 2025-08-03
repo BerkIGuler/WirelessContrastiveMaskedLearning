@@ -30,12 +30,12 @@ class ContraWiMAETrainer(WiMAETrainer):
         
         total_recon_loss = 0.0
         total_contrastive_loss = 0.0
-        total_loss = 0.0
+        total_loss_val = 0.0
         num_batches = len(train_loader)
         
         # Get loss weights
-        recon_weight = self.config["training"].get("reconstruction_weight", 1.0)
-        contrastive_weight = self.config["training"].get("contrastive_weight", 1.0)
+        recon_weight = self.config["training"].get("reconstruction_weight", 0.9)
+        contrastive_weight = self.config["training"].get("contrastive_weight", 0.1)
         
         progress_bar = tqdm(train_loader, desc=f"Training Epoch {self.current_epoch}")
         
@@ -46,49 +46,14 @@ class ContraWiMAETrainer(WiMAETrainer):
             # Forward pass
             self.optimizer.zero_grad()
             
-            # Get original patches for reconstruction target
-            patches = self.model.patcher(data)
+            # Compute training losses using model's method
+            losses = self.model.compute_training_losses(data, self.criterion)
             
-            # Forward pass with augmentation for contrastive learning
-            output = self.model.forward_with_augmentation(
-                data, 
-                mask_ratio=self.model.mask_ratio
-            )
-            
-            # Extract outputs
-            orig_output = output["original"]
-            aug_output = output["augmented"]
-            
-            # Reconstruction loss (average of original and augmented)
-            orig_recon_loss = self.criterion(
-                orig_output["reconstructed_patches"], 
-                patches
-            )
-            aug_recon_loss = self.criterion(
-                aug_output["reconstructed_patches"], 
-                patches
-            )
-            recon_loss = (orig_recon_loss + aug_recon_loss) / 2
-            
-            # Contrastive loss
-            orig_features = orig_output["contrastive_features"]
-            aug_features = aug_output["contrastive_features"]
-            
-            # Mean pooling for contrastive features
-            orig_features = torch.mean(orig_features, dim=1)  # (batch_size, contrastive_dim)
-            aug_features = torch.mean(aug_features, dim=1)    # (batch_size, contrastive_dim)
-            
-            contrastive_loss = self.model.compute_contrastive_loss(
-                orig_features, 
-                aug_features,
-                temperature=self.model.temperature
-            )
-            
-            # Combined loss
-            loss = recon_weight * recon_loss + contrastive_weight * contrastive_loss
+            # Apply weights to losses
+            total_loss = recon_weight * losses["reconstruction_loss"] + contrastive_weight * losses["contrastive_loss"]
             
             # Backward pass
-            loss.backward()
+            total_loss.backward()
             
             # Gradient clipping
             gradient_clip_val = self.config["training"].get("gradient_clip_val", 0.0)
@@ -101,30 +66,30 @@ class ContraWiMAETrainer(WiMAETrainer):
             self.optimizer.step()
             
             # Update metrics
-            total_recon_loss += recon_loss.item()
-            total_contrastive_loss += contrastive_loss.item()
-            total_loss += loss.item()
+            total_recon_loss += losses["reconstruction_loss"].item()
+            total_contrastive_loss += losses["contrastive_loss"].item()
+            total_loss_val += total_loss.item()
             self.global_step += 1
             
             # Update progress bar
             progress_bar.set_postfix({
-                "recon_loss": f"{recon_loss.item():.4f}",
-                "contrastive_loss": f"{contrastive_loss.item():.4f}",
-                "total_loss": f"{loss.item():.4f}",
-                "avg_total_loss": f"{total_loss / (batch_idx + 1):.4f}"
+                "recon_loss": f"{losses['reconstruction_loss'].item():.4f}",
+                "contrastive_loss": f"{losses['contrastive_loss'].item():.4f}",
+                "total_loss": f"{total_loss.item():.4f}",
+                "avg_total_loss": f"{total_loss_val / (batch_idx + 1):.4f}"
             })
             
             # Log to tensorboard
             log_interval = self.config["logging"].get("log_every_n_steps", 100)
             if self.writer and batch_idx % log_interval == 0:
-                self.writer.add_scalar("train/batch_recon_loss", recon_loss.item(), self.global_step)
-                self.writer.add_scalar("train/batch_contrastive_loss", contrastive_loss.item(), self.global_step)
-                self.writer.add_scalar("train/batch_total_loss", loss.item(), self.global_step)
+                self.writer.add_scalar("train/batch_recon_loss", losses["reconstruction_loss"].item(), self.global_step)
+                self.writer.add_scalar("train/batch_contrastive_loss", losses["contrastive_loss"].item(), self.global_step)
+                self.writer.add_scalar("train/batch_total_loss", total_loss.item(), self.global_step)
         
         return {
             "train_recon_loss": total_recon_loss / num_batches,
             "train_contrastive_loss": total_contrastive_loss / num_batches,
-            "train_total_loss": total_loss / num_batches
+            "train_total_loss": total_loss_val / num_batches
         }
     
     def validate(self, val_loader: DataLoader) -> Dict[str, float]:
@@ -139,66 +104,41 @@ class ContraWiMAETrainer(WiMAETrainer):
         """
         self.model.eval()
         
-        total_recon_loss = 0.0
+        total_masked_recon_loss = 0.0
+        total_full_recon_loss = 0.0
         total_contrastive_loss = 0.0
-        total_loss = 0.0
+        total_masked_loss = 0.0
+        total_full_loss = 0.0
         num_batches = len(val_loader)
         
         # Get loss weights
-        recon_weight = self.config["training"].get("reconstruction_weight", 1.0)
-        contrastive_weight = self.config["training"].get("contrastive_weight", 1.0)
+        recon_weight = self.config["training"].get("reconstruction_weight", 0.9)
+        contrastive_weight = self.config["training"].get("contrastive_weight", 0.1)
         
         with torch.no_grad():
             for data in tqdm(val_loader, desc="Validation"):
                 # Move data to device
                 data = data.to(self.device)
                 
-                # Get original patches for reconstruction target
-                patches = self.model.patcher(data)
+                # Compute validation losses using model's method
+                losses = self.model.compute_validation_losses(data, self.criterion)
                 
-                # Forward pass with augmentation
-                output = self.model.forward_with_augmentation(data, mask_ratio=0.0)
-                
-                # Extract outputs
-                orig_output = output["original"]
-                aug_output = output["augmented"]
-                
-                # Reconstruction loss
-                orig_recon_loss = self.criterion(
-                    orig_output["reconstructed_patches"], 
-                    patches
-                )
-                aug_recon_loss = self.criterion(
-                    aug_output["reconstructed_patches"], 
-                    patches
-                )
-                recon_loss = (orig_recon_loss + aug_recon_loss) / 2
-                
-                # Contrastive loss
-                orig_features = orig_output["contrastive_features"]
-                aug_features = aug_output["contrastive_features"]
-                
-                # Mean pooling for contrastive features
-                orig_features = torch.mean(orig_features, dim=1)
-                aug_features = torch.mean(aug_features, dim=1)
-                
-                contrastive_loss = self.model.compute_contrastive_loss(
-                    orig_features, 
-                    aug_features,
-                    temperature=self.model.temperature
-                )
-                
-                # Combined loss
-                loss = recon_weight * recon_loss + contrastive_weight * contrastive_loss
+                # Apply weights to losses
+                masked_loss = recon_weight * losses["masked_recon_loss"] + contrastive_weight * losses["contrastive_loss"]
+                full_loss = recon_weight * losses["full_recon_loss"] + contrastive_weight * losses["contrastive_loss"]
                 
                 # Update metrics
-                total_recon_loss += recon_loss.item()
-                total_contrastive_loss += contrastive_loss.item()
-                total_loss += loss.item()
+                total_masked_recon_loss += losses["masked_recon_loss"].item()
+                total_full_recon_loss += losses["full_recon_loss"].item()
+                total_contrastive_loss += losses["contrastive_loss"].item()
+                total_masked_loss += masked_loss.item()
+                total_full_loss += full_loss.item()
         
         return {
-            "val_recon_loss": total_recon_loss / num_batches,
-            "val_contrastive_loss": total_contrastive_loss / num_batches,
-            "val_total_loss": total_loss / num_batches,
-            "val_loss": total_loss / num_batches  # For compatibility with base trainer
+            "val_masked_recon_loss": total_masked_recon_loss / num_batches,  # Primary reconstruction metric
+            "val_full_recon_loss": total_full_recon_loss / num_batches,      # Secondary reconstruction metric
+            "val_contrastive_loss": total_contrastive_loss / num_batches,    # Contrastive metric
+            "val_masked_loss": total_masked_loss / num_batches,              # Primary total loss
+            "val_full_loss": total_full_loss / num_batches,                  # Secondary total loss
+            "val_loss": total_masked_loss / num_batches                      # For compatibility with base trainer
         } 

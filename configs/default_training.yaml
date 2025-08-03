@@ -69,8 +69,8 @@ training:
   min_delta: 0.001
   
   # Loss weights (for contrastive learning)
-  reconstruction_weight: 1.0
-  contrastive_weight: 1.0
+  reconstruction_weight: 0.9
+  contrastive_weight: 0.1
   
   # Gradient clipping
   gradient_clip_val: 1.0

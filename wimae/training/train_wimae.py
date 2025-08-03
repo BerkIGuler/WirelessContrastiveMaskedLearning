@@ -46,9 +46,24 @@ class WiMAETrainer(BaseTrainer):
             # Forward pass with masking
             output = self.model(data, mask_ratio=self.model.mask_ratio)
             reconstructed_patches = output["reconstructed_patches"]
+            ids_mask = output["ids_mask"]  # Indices of masked patches
             
-            # Compute reconstruction loss
-            loss = self.criterion(reconstructed_patches, patches)
+            # Compute reconstruction loss only on masked patches
+            batch_size = patches.shape[0]
+            
+            if ids_mask.shape[1] > 0:  # If there are masked patches
+                # Create batch indices tensor [B, M] where M is number of masked patches
+                batch_indices = torch.arange(batch_size, device=self.device).unsqueeze(-1).expand(-1, ids_mask.shape[1])
+                
+                # Select masked positions from both prediction and target
+                recon_masked = reconstructed_patches[batch_indices, ids_mask]
+                target_masked = patches[batch_indices, ids_mask]
+                
+                # Compute loss only on masked positions
+                loss = self.criterion(recon_masked, target_masked)
+            else:
+                # No masked patches (shouldn't happen with mask_ratio > 0)
+                loss = torch.tensor(0.0, device=self.device, requires_grad=True)
             
             # Backward pass
             loss.backward()
@@ -94,7 +109,8 @@ class WiMAETrainer(BaseTrainer):
         """
         self.model.eval()
         
-        total_loss = 0.0
+        total_masked_loss = 0.0
+        total_full_loss = 0.0
         num_batches = len(val_loader)
         
         with torch.no_grad():
@@ -105,25 +121,31 @@ class WiMAETrainer(BaseTrainer):
                 # Get original patches for reconstruction target
                 patches = self.model.patcher(data)
                 
-                # Forward pass without masking
-                output = self.model(data, mask_ratio=0.0)
-                reconstructed_patches = output["reconstructed_patches"]
+                # 1. Masked reconstruction (same as training) - PRIMARY METRIC
+                masked_output = self.model(data, mask_ratio=self.model.mask_ratio)
+                masked_reconstructed = masked_output["reconstructed_patches"]
+                ids_mask = masked_output["ids_mask"]
                 
-                # Compute reconstruction loss
-                loss = self.criterion(reconstructed_patches, patches)
-                total_loss += loss.item()
-        
-        val_loss = total_loss / num_batches
+                # Compute masked loss
+                if ids_mask.shape[1] > 0:
+                    batch_size = patches.shape[0]
+                    batch_indices = torch.arange(batch_size, device=self.device).unsqueeze(-1).expand(-1, ids_mask.shape[1])
+                    recon_masked = masked_reconstructed[batch_indices, ids_mask]
+                    target_masked = patches[batch_indices, ids_mask]
+                    masked_loss = self.criterion(recon_masked, target_masked)
+                else:
+                    masked_loss = torch.tensor(0.0, device=self.device)
+                
+                # 2. Full reconstruction (secondary metric)
+                full_output = self.model(data, mask_ratio=0.0)
+                full_reconstructed = full_output["reconstructed_patches"]
+                full_loss = self.criterion(full_reconstructed, patches)
+                
+                total_masked_loss += masked_loss.item()
+                total_full_loss += full_loss.item()
         
         return {
-            "val_loss": val_loss
-        }
-    
-    def setup_criterion(self) -> nn.Module:
-        """
-        Setup loss function for WiMAE.
-        
-        Returns:
-            Loss function
-        """
-        return nn.MSELoss() 
+            "val_masked_loss": total_masked_loss / num_batches,  # Primary metric
+            "val_full_loss": total_full_loss / num_batches,      # Secondary metric
+            "val_loss": total_masked_loss / num_batches          # For compatibility with base trainer
+        } 

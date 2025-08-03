@@ -294,3 +294,163 @@ class ContraWiMAE(WiMAE):
         })
         
         return base_info 
+
+    def compute_training_losses(
+        self,
+        x: torch.Tensor,
+        criterion: nn.Module,
+        mask_ratio: Optional[float] = None,
+    ) -> Dict[str, torch.Tensor]:
+        """
+        Compute training losses for ContraWiMAE with 2 forward passes.
+        
+        Args:
+            x: Input tensor
+            criterion: Loss function for reconstruction
+            mask_ratio: Masking ratio (uses self.mask_ratio if None)
+            
+        Returns:
+            Dictionary containing:
+                - reconstruction_loss: Loss on original masked patches
+                - contrastive_loss: Loss between visible patches of original and augmented
+                - total_loss: Combined loss
+        """
+        if mask_ratio is None:
+            mask_ratio = self.mask_ratio
+            
+        # 1) Get the original channel and create the augmented channel from it
+        x_aug = apply_channel_augmentations(
+            x, 
+            snr_min=self.snr_min, 
+            snr_max=self.snr_max
+        )
+        
+        # 2) Mask both channels independently so that you have different masks
+        # Forward pass for original data (for both reconstruction and contrastive)
+        orig_output = self.forward(x, mask_ratio=mask_ratio, return_contrastive=True)
+        orig_reconstructed = orig_output["reconstructed_patches"]
+        orig_ids_mask = orig_output["ids_mask"]
+        orig_encoded = orig_output["encoded_features"]  # Visible patches only
+        
+        # Forward pass for augmented data (for contrastive only)
+        aug_output = self.forward(x_aug, mask_ratio=mask_ratio, return_contrastive=True)
+        aug_encoded = aug_output["encoded_features"]  # Visible patches only
+        
+        # 3) Compute reconstruction loss on the masked patches of the original channel
+        if orig_ids_mask.shape[1] > 0:
+            batch_size = x.shape[0]
+            batch_indices = torch.arange(batch_size, device=x.device).unsqueeze(-1).expand(-1, orig_ids_mask.shape[1])
+            
+            # Get original patches for target
+            patches = self.patcher(x)
+            target_masked = patches[batch_indices, orig_ids_mask]
+            recon_masked = orig_reconstructed[batch_indices, orig_ids_mask]
+            
+            reconstruction_loss = criterion(recon_masked, target_masked)
+        else:
+            reconstruction_loss = torch.tensor(0.0, device=x.device, requires_grad=True)
+        
+        # 4) Compute the contrastive loss between the encoded visible patches
+        # Get contrastive features from visible patches only
+        z_i = self.contrastive_head(orig_encoded)  # Original visible patches
+        z_j = self.contrastive_head(aug_encoded)   # Augmented visible patches
+        
+        # Mean pooling for contrastive features
+        z_i = torch.mean(z_i, dim=1)  # (batch_size, contrastive_dim)
+        z_j = torch.mean(z_j, dim=1)  # (batch_size, contrastive_dim)
+        
+        contrastive_loss = self.compute_contrastive_loss(z_i, z_j, temperature=self.temperature)
+        
+        return {
+            "reconstruction_loss": reconstruction_loss,
+            "contrastive_loss": contrastive_loss,
+            "total_loss": reconstruction_loss + contrastive_loss  # Equal weights, can be adjusted in trainer
+        } 
+
+    def compute_validation_losses(
+        self,
+        x: torch.Tensor,
+        criterion: nn.Module,
+        mask_ratio: Optional[float] = None,
+    ) -> Dict[str, torch.Tensor]:
+        """
+        Compute validation losses for ContraWiMAE.
+        
+        Args:
+            x: Input tensor
+            criterion: Loss function for reconstruction
+            mask_ratio: Masking ratio (uses self.mask_ratio if None)
+            
+        Returns:
+            Dictionary containing:
+                - masked_recon_loss: Reconstruction loss on masked patches (primary)
+                - full_recon_loss: Reconstruction loss on full input (secondary)
+                - contrastive_loss: Contrastive loss between original and augmented
+                - masked_loss: Combined masked reconstruction + contrastive loss
+                - full_loss: Combined full reconstruction + contrastive loss
+        """
+        if mask_ratio is None:
+            mask_ratio = self.mask_ratio
+            
+        # Get original patches for reconstruction target
+        patches = self.patcher(x)
+        
+        # 1. Masked reconstruction (same as training) - PRIMARY METRIC
+        masked_output = self.forward_with_augmentation(x, mask_ratio=mask_ratio)
+        orig_masked_output = masked_output["original"]
+        aug_masked_output = masked_output["augmented"]
+        
+        # Compute masked reconstruction loss
+        orig_ids_mask = orig_masked_output["ids_mask"]
+        aug_ids_mask = aug_masked_output["ids_mask"]
+        
+        if orig_ids_mask.shape[1] > 0:
+            batch_size = patches.shape[0]
+            batch_indices = torch.arange(batch_size, device=x.device).unsqueeze(-1).expand(-1, orig_ids_mask.shape[1])
+            orig_recon_masked = orig_masked_output["reconstructed_patches"][batch_indices, orig_ids_mask]
+            target_masked = patches[batch_indices, orig_ids_mask]
+            orig_masked_recon_loss = criterion(orig_recon_masked, target_masked)
+        else:
+            orig_masked_recon_loss = torch.tensor(0.0, device=x.device)
+        
+        if aug_ids_mask.shape[1] > 0:
+            batch_size = patches.shape[0]
+            batch_indices = torch.arange(batch_size, device=x.device).unsqueeze(-1).expand(-1, aug_ids_mask.shape[1])
+            aug_recon_masked = aug_masked_output["reconstructed_patches"][batch_indices, aug_ids_mask]
+            target_masked = patches[batch_indices, aug_ids_mask]
+            aug_masked_recon_loss = criterion(aug_recon_masked, target_masked)
+        else:
+            aug_masked_recon_loss = torch.tensor(0.0, device=x.device)
+        
+        masked_recon_loss = (orig_masked_recon_loss + aug_masked_recon_loss) / 2
+        
+        # 2. Full reconstruction (secondary metric)
+        full_output = self.forward_with_augmentation(x, mask_ratio=0.0)
+        orig_full_output = full_output["original"]
+        aug_full_output = full_output["augmented"]
+        
+        orig_full_recon_loss = criterion(orig_full_output["reconstructed_patches"], patches)
+        aug_full_recon_loss = criterion(aug_full_output["reconstructed_patches"], patches)
+        full_recon_loss = (orig_full_recon_loss + aug_full_recon_loss) / 2
+        
+        # Contrastive loss (same for both masked and full)
+        orig_features = orig_masked_output["contrastive_features"]
+        aug_features = aug_masked_output["contrastive_features"]
+        
+        # Mean pooling for contrastive features
+        orig_features = torch.mean(orig_features, dim=1)
+        aug_features = torch.mean(aug_features, dim=1)
+        
+        contrastive_loss = self.compute_contrastive_loss(
+            orig_features, 
+            aug_features,
+            temperature=self.temperature
+        )
+        
+        return {
+            "masked_recon_loss": masked_recon_loss,
+            "full_recon_loss": full_recon_loss,
+            "contrastive_loss": contrastive_loss,
+            "masked_loss": masked_recon_loss + contrastive_loss,  # Equal weights
+            "full_loss": full_recon_loss + contrastive_loss,      # Equal weights
+        } 
