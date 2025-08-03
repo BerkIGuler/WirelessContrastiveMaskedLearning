@@ -2,13 +2,13 @@
 
 # Model configuration
 model:
-  type: "contramae"  # Options: "wimae", "contramae"
+  type: "wimae"  # Options: "wimae", "contramae"
   patch_size: [1, 16]
   encoder_dim: 64
   encoder_layers: 12
   encoder_nhead: 16
   decoder_layers: 4
-  decoder_nhead: 12
+  decoder_nhead: 8
   mask_ratio: 0.6
   contrastive_dim: 64
   temperature: 0.1
@@ -27,7 +27,7 @@ data:
   
   # Statistics handling options:
   # Option 1: Calculate statistics on-the-fly from training data
-  calculate_statistics: false  # Set to true to calculate from data
+  calculate_statistics: true  # Set to true to calculate from data
   
   # Option 2: Use pre-computed statistics (used if calculate_statistics=false)
   statistics:

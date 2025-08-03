@@ -2,21 +2,21 @@
 Base trainer class for WiMAE and ContraWiMAE models.
 """
 
+import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader, Dataset, random_split
-from torch.utils.tensorboard import SummaryWriter
 import yaml
-import os
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, Optional, Tuple, List
+from torch.utils.data import DataLoader, Dataset, random_split
 from tqdm import tqdm
-from datetime import datetime
 
-from ..models import WiMAE, ContraWiMAE
+from ..models.base import WiMAE
+from ..models.contramae import ContraWiMAE
 from .data_utils import (
-    OptimizedPreloadedDataset, 
+    OptimizedPreloadedDataset,
     ScenarioSplitDataset,
     create_efficient_dataloader,
     calculate_complex_statistics
@@ -38,11 +38,11 @@ class BaseTrainer:
         self.config = config
         self.device = torch.device(config["training"]["device"])
         
-        # Initialize components
-        self.model = None
-        self.optimizer = None
-        self.scheduler = None
-        self.criterion = None
+        # Initialize all components during trainer creation
+        self.model = self.setup_model()
+        self.optimizer = self.setup_optimizer(self.model)
+        self.scheduler = self.setup_scheduler(self.optimizer)
+        self.criterion = self.setup_criterion()
         self.writer = None
         
         # Training state
@@ -55,21 +55,29 @@ class BaseTrainer:
         self.setup_logging()
         
     def setup_logging(self):
-        """Setup logging and tensorboard."""
+        """
+        Setup logging and tensorboard writer.
+        """
+        # Create log directory
         log_dir = self.config["logging"]["log_dir"]
-        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        self.run_name = f"{self.config['model']['type']}_run_{timestamp}"
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        model_type = self.config["model"]["type"]
         
-        self.log_dir = Path(log_dir) / self.run_name
+        self.log_dir = Path(log_dir) / f"{model_type}_{timestamp}"
         self.log_dir.mkdir(parents=True, exist_ok=True)
         
         # Save configuration
         with open(self.log_dir / "config.yaml", "w") as f:
             yaml.dump(self.config, f, default_flow_style=False)
         
-        # Setup tensorboard
-        if self.config["logging"]["tensorboard"]:
-            self.writer = SummaryWriter(str(self.log_dir))
+        # Setup tensorboard writer if enabled
+        if self.config["logging"].get("tensorboard", True):
+            try:
+                from torch.utils.tensorboard import SummaryWriter
+                self.writer = SummaryWriter(str(self.log_dir))
+            except ImportError:
+                print("Warning: tensorboard not available. Install with: pip install tensorboard")
+                self.writer = None
     
     def setup_model(self) -> nn.Module:
         """
@@ -479,12 +487,6 @@ class BaseTrainer:
         """
         Main training loop.
         """
-        # Setup components
-        self.model = self.setup_model()
-        self.optimizer = self.setup_optimizer(self.model)
-        self.scheduler = self.setup_scheduler(self.optimizer)
-        self.criterion = self.setup_criterion()
-        
         # Setup dataloaders
         train_loader, val_loader = self.setup_dataloaders()
         
