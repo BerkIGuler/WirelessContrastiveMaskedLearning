@@ -17,7 +17,7 @@ setup(
     version="0.1.0",
     author="Research Team",
     author_email="your.email@example.com",
-    description="Wireless Contrastive Masked Learning (WiMAE & ContraWiMAE)",
+    description="PyTorch implementation of Wireless Masked Autoencoders (WiMAE) and Contrastive WiMAE for wireless channel data modeling",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/yourusername/WirelessContrastiveMaskedLearning",
@@ -49,13 +49,7 @@ setup(
             "sphinx-rtd-theme>=1.0.0",
         ],
     },
-    entry_points={
-        "console_scripts": [
-            "wimae-train=wimae.training.train_wimae:main",
-            "wimae-encode=wimae.encoding.encoder:main",
-            "wimae-downstream=wimae.downstream.trainer:main",
-        ],
-    },
+
     include_package_data=True,
     package_data={
         "wimae": ["configs/*.yaml"],

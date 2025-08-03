@@ -1,339 +1,351 @@
-# Wireless Contrastive Masked Learning (WiMAE)
+# Wireless Contrastive Masked Learning (WiMAE & ContraWiMAE)
 
-A PyTorch implementation of Wireless Masked Autoencoder (WiMAE) and Contrastive WiMAE (ContraWiMAE) for wireless channel data analysis.
+A PyTorch implementation of Wireless Masked Autoencoders (WiMAE) and Contrastive Wireless Masked Autoencoders (ContraWiMAE) for wireless channel data modeling and representation learning.
 
-## Quick Start
+## 🚀 Overview
 
-### Training with Optimized Data Loading
+This repository provides implementations of two transformer-based models designed specifically for wireless channel data:
 
-The training pipeline uses `OptimizedPreloadedDataset` for maximum training speed:
+- **WiMAE (Wireless Masked Autoencoder)**: A masked autoencoder that learns representations of wireless channel matrices through reconstruction tasks
+- **ContraWiMAE (Contrastive WiMAE)**: Extends WiMAE with contrastive learning to create representations invariant to channel augmentations
+
+Both models use patch-based processing of complex-valued wireless channel matrices and transformer architectures optimized for wireless data characteristics.
+
+## 📋 Key Features
+
+- **🔧 Modular Architecture**: Clean separation of encoder, decoder, and contrastive components
+- **📊 Complex Data Support**: Native handling of complex-valued wireless channel matrices
+- **🎯 Patch-Based Processing**: Efficient patching strategy for wireless channel data
+- **🔄 Contrastive Learning**: Advanced contrastive learning with wireless-specific augmentations
+- **⚡ Efficient Training**: Optimized data loading and training pipeline
+- **🎛️ Flexible Configuration**: YAML-based configuration system
+- **📈 Comprehensive Logging**: TensorBoard integration and checkpoint management
+- **🧪 Well-Tested**: Extensive test suite covering all components
+
+## 🛠️ Installation
+
+### Requirements
+
+- Python 3.8+
+- PyTorch 2.0+
+- CUDA-compatible GPU (recommended)
+
+### Install from Source
 
 ```bash
-# Train with default configuration
-python examples/training_example.py --data-dir /path/to/your/npz/files
-
-# Debug mode (small dataset for testing)
-python examples/training_example.py --data-dir /path/to/your/npz/files --debug
-
-# Use custom config
-python examples/training_example.py --config your_config.yaml --data-dir /path/to/your/npz/files
+git clone https://github.com/yourusername/WirelessContrastiveMaskedLearning.git
+cd WirelessContrastiveMaskedLearning
+pip install -e .
 ```
 
-### Data Format
+### Dependencies
 
-The training pipeline expects NPZ files containing complex channel matrices:
-- Each NPZ file should contain a `channels` array with shape `(num_samples, 1, height, width)`
-- The data should be complex-valued (real + imaginary parts)
-- Files should be placed in a directory specified by `data_dir` in the config
-
-### Data Loading Approaches
-
-The system supports two data loading approaches:
-
-#### 1. Simple Approach (Default)
-Load all NPZ files from a directory and split randomly:
-```yaml
-data:
-  data_dir: "data/pretrain"
-  normalize: true
-  calculate_statistics: true
-  # No scenario_split_config needed
-```
-
-#### 2. Scenario Split Approach
-Use file patterns to split data based on scenarios:
-```yaml
-data:
-  data_dir: "data/pretrain"
-  normalize: true
-  calculate_statistics: true
-  scenario_split_config: "configs/scenario_split_simple.yaml"
-```
-
-### Data Normalization
-
-The system supports two approaches for data normalization:
-
-#### 1. On-the-Fly Statistics Calculation
-Calculate normalization statistics from the training data:
-```yaml
-data:
-  normalize: true
-  calculate_statistics: true  # Calculate from training data
-```
-
-#### 2. Pre-Computed Statistics
-Use provided statistics for consistent normalization:
-```yaml
-data:
-  normalize: true
-  calculate_statistics: false  # Use provided statistics
-  statistics:
-    real_mean: 0.021121172234416008
-    real_std: 30.7452392578125
-    imag_mean: -0.01027622725814581
-    imag_std: 30.70543670654297
-```
-
-**Benefits of each approach:**
-- **On-the-fly**: Works with any dataset, no pre-computation needed
-- **Pre-computed**: Faster startup, consistent normalization across experiments
-
-### Scenario-Based Data Splitting
-
-The system supports scenario-based train/validation splits using regex patterns:
-
-#### Configuration Structure
-```yaml
-# configs/scenario_split_test.yaml
-# Training patterns (regex)
-train_patterns:
-  - "urban.*\.npz"           # All urban scenario files
-  - "city.*\.npz"            # City environment files
-  - "indoor.*\.npz"          # Indoor environment files
-
-# Validation patterns (regex)
-val_patterns:
-  - "rural.*\.npz"           # Rural environment files
-  - "highway.*\.npz"         # Highway environment files
-
-# Test patterns (regex)
-test_patterns:
-  - "mixed.*\.npz"           # Mixed environment files
-  - "test.*\.npz"            # Test scenario files
-```
-
-#### Usage
-```python
-from wimae.training.data_utils import setup_dataloaders, setup_scenario_dataloaders
-
-# Train/Val only
-train_loader, val_loader, train_size, val_size, statistics = setup_dataloaders(
-    config_path="configs/scenario_split_test.yaml",
-    data_dir="data/pretrain",
-    batch_size=32,
-    calculate_statistics=True
-)
-
-# Train/Val/Test
-train_loader, val_loader, test_loader, train_size, val_size, test_size, statistics = setup_scenario_dataloaders(
-    config_path="configs/scenario_split_test.yaml",
-    data_dir="data/pretrain",
-    batch_size=32,
-    calculate_statistics=True,
-    include_test=True
-)
-```
-
-#### Test Data Creation
 ```bash
-# Create test NPZ files with various naming patterns
-python examples/create_test_data.py
-
-# Run data loading examples
-python examples/data_loading_examples.py
+pip install -r requirements.txt
 ```
 
-### Default Configuration
+## 🏗️ Repository Structure
 
-The default configuration (`configs/default_training.yaml`) includes:
+```
+WirelessContrastiveMaskedLearning/
+├── configs/                    # Configuration files
+│   ├── default_training.yaml   # Default training configuration
+│   ├── scenario_split_simple.yaml
+│   └── scenario_split_test.yaml
+├── examples/                   # Example usage
+│   └── training_demo.ipynb     # Training demonstration
+├── wimae/                      # Main package
+│   ├── models/                 # Model implementations
+│   │   ├── base.py            # WiMAE base model
+│   │   ├── contramae.py       # ContraWiMAE model
+│   │   └── modules/           # Model components
+│   │       ├── encoder.py     # Transformer encoder
+│   │       ├── decoder.py     # Transformer decoder
+│   │       ├── contrastive_head.py  # Contrastive learning head
+│   │       ├── patching.py    # Patch extraction/reconstruction
+│   │       ├── masking.py     # Masking strategies
+│   │       ├── augmentations.py  # Data augmentations
+│   │       └── pos_encodings.py  # Positional encodings
+│   └── training/              # Training utilities
+│       ├── trainer.py         # Base trainer class
+│       ├── train_wimae.py     # WiMAE trainer
+│       ├── train_contramae.py # ContraWiMAE trainer
+│       └── data_utils.py      # Data loading utilities
+├── tests/                     # Unit tests
+├── docs/                      # Documentation
+└── data/                      # Data directory (user-provided)
+```
 
-- **Model**: ContraWiMAE with 128-dimensional encoder
-- **Data**: OptimizedPreloadedDataset with normalization
-- **Training**: AdamW optimizer with cosine learning rate scheduling
-- **Batch Size**: 64 (adjust based on your GPU memory)
+## 🚀 Quick Start
 
-### Configuration Options
+### 1. Prepare Your Data
 
-You can customize the training by modifying `configs/default_training.yaml`:
+Organize your wireless channel data as NPZ files in the data directory:
+
+```
+data/
+├── pretrain/
+│   ├── channels_001.npz
+│   ├── channels_002.npz
+│   └── ...
+```
+
+Each NPZ file should contain complex-valued channel matrices with shape `(N, H, W)` where:
+- `N`: Number of channel realizations
+- `H, W`: Spatial dimensions (e.g., antennas, subcarriers)
+
+### 2. Configure Training
+
+Edit the configuration file or use the default:
 
 ```yaml
+# configs/default_training.yaml
 model:
-  type: "contramae"  # or "wimae"
-  patch_size: [4, 4]
-  encoder_dim: 128
-  # ... other model parameters
+  type: "wimae"  # or "contramae"
+  patch_size: [1, 16]
+  encoder_dim: 64
+  encoder_layers: 12
+  mask_ratio: 0.6
 
 data:
   data_dir: "data/pretrain"
   normalize: true
   val_split: 0.2
-  debug_size: null  # Set to number for debugging
 
 training:
   batch_size: 64
   epochs: 100
-  # ... other training parameters
+  device: "cuda:0"
 ```
 
-## Installation
+### 3. Train Models
 
-```bash
-pip install -r requirements.txt
+#### Train WiMAE (Base Model)
+
+```python
+from wimae.training import WiMAETrainer
+import yaml
+
+# Load configuration
+with open("configs/default_training.yaml", "r") as f:
+    config = yaml.safe_load(f)
+
+config["model"]["type"] = "wimae"
+
+# Create and train
+trainer = WiMAETrainer(config)
+trainer.train()
 ```
 
-## Testing
+#### Train ContraWiMAE (With Contrastive Learning)
 
-The project includes comprehensive unit tests to ensure code quality and correctness. All tests are located in the `tests/` directory.
+```python
+from wimae.training import ContraWiMAETrainer
+import yaml
 
-### Running Tests
+# Load configuration
+with open("configs/default_training.yaml", "r") as f:
+    config = yaml.safe_load(f)
+
+config["model"]["type"] = "contramae"
+
+# Create and train
+trainer = ContraWiMAETrainer(config)
+trainer.train()
+```
+
+### 4. Transfer Learning: WiMAE → ContraWiMAE
+
+Load a pretrained WiMAE model into ContraWiMAE for transfer learning:
+
+```python
+# Create ContraWiMAE trainer
+config["model"]["type"] = "contramae"
+contra_trainer = ContraWiMAETrainer(config)
+
+# Load WiMAE weights (encoder/decoder), keep contrastive head random
+contra_trainer.load_checkpoint("path/to/wimae_checkpoint.pth", 
+                               model_only=True, strict=False)
+
+# Continue training with contrastive learning
+contra_trainer.train()
+```
+
+## 📊 Model Architectures
+
+### WiMAE (Wireless Masked Autoencoder)
+
+```
+Input: Complex Channel Matrix [B, H, W]
+    ↓
+Patcher: Extract patches [B, N_patches, patch_dim]
+    ↓
+Encoder: Transformer with masking [B, N_visible, hidden_dim]
+    ↓
+Decoder: Reconstruct masked patches [B, N_patches, patch_dim]
+    ↓
+Output: Reconstructed Channel Matrix [B, H, W]
+```
+
+**Key Components:**
+- **Patch Embedding**: Linear projection of flattened patches
+- **Positional Encoding**: Learnable or sinusoidal position embeddings
+- **Masking Strategy**: Random masking of input patches
+- **Transformer Encoder**: Multi-head self-attention with GELU activation
+- **Transformer Decoder**: Cross-attention between encoded patches and mask tokens
+
+### ContraWiMAE (Contrastive WiMAE)
+
+Extends WiMAE with contrastive learning:
+
+```
+Input: Complex Channel Matrix [B, H, W]
+    ↓
+Augmentation: Apply wireless-specific augmentations
+    ↓
+WiMAE Processing: Same as above
+    ↓
+Contrastive Head: Project to contrastive space [B, contrastive_dim]
+    ↓
+Contrastive Loss: InfoNCE between original and augmented views
+```
+
+**Additional Components:**
+- **Contrastive Head**: MLP projection with L2 normalization
+- **Augmentations**: SNR variation, frequency shifts, phase rotations
+- **InfoNCE Loss**: Temperature-scaled contrastive learning
+
+## ⚙️ Configuration Options
+
+### Model Configuration
+
+```yaml
+model:
+  type: "wimae"                    # "wimae" or "contramae"
+  patch_size: [1, 16]             # Patch dimensions [height, width]
+  encoder_dim: 64                 # Hidden dimension
+  encoder_layers: 12              # Number of encoder layers
+  encoder_nhead: 16               # Number of attention heads
+  decoder_layers: 4               # Number of decoder layers
+  decoder_nhead: 8                # Decoder attention heads
+  mask_ratio: 0.6                 # Fraction of patches to mask
+  
+  # ContraWiMAE specific
+  contrastive_dim: 64             # Contrastive projection dimension
+  temperature: 0.1                # Contrastive loss temperature
+  snr_min: 0.0                    # Minimum SNR for augmentation
+  snr_max: 30.0                   # Maximum SNR for augmentation
+```
+
+### Training Configuration
+
+```yaml
+training:
+  batch_size: 64
+  epochs: 100
+  device: "cuda:0"
+  
+  optimizer:
+    type: "adam"
+    lr: 0.0003
+    weight_decay: 0.0
+    
+  scheduler:
+    type: "cosine"
+    T_max: 100
+    
+  # ContraWiMAE loss weights
+  reconstruction_weight: 0.9      # Weight for reconstruction loss
+  contrastive_weight: 0.1         # Weight for contrastive loss
+```
+
+## 📈 Training Features
+
+### Checkpointing and Resuming
+
+```python
+# Save checkpoints automatically
+trainer.train()  # Saves to runs/{model_type}_{exp_name}/
+
+# Resume from checkpoint
+trainer.load_checkpoint("path/to/checkpoint.pth")
+trainer.train()
+
+# Load only model weights (for inference)
+trainer.load_checkpoint("path/to/checkpoint.pth", model_only=True)
+```
+
+### Transfer Learning
+
+```python
+# Load WiMAE into ContraWiMAE with strict=False
+# Missing contrastive_head weights will be warned about
+trainer.load_checkpoint("wimae_checkpoint.pth", strict=False)
+```
+
+### Monitoring and Logging
+
+- **TensorBoard**: Automatic logging of losses, learning rates, and metrics
+- **Console Output**: Progress bars with real-time metrics
+- **Checkpoints**: Best and latest model checkpoints saved automatically
+
+## 🧪 Testing
+
+Run the comprehensive test suite:
 
 ```bash
 # Run all tests
-pytest
+pytest tests/
 
-# Run tests with verbose output
-pytest -v
-
-# Run tests with coverage report
-pytest --cov=wimae
-
-# Run specific test file
-pytest tests/test_models.py
-
-# Run specific test class
-pytest tests/test_model_components.py::TestWiMAE
-
-# Run specific test method
-pytest tests/test_model_components.py::TestWiMAE::test_wimae_forward
-
-# Run tests in parallel (faster)
-pytest -n auto
-
-# Run tests and generate HTML coverage report
-pytest --cov=wimae --cov-report=html
+# Run specific test categories
+pytest tests/test_models.py              # Model tests
+pytest tests/test_data_loading.py        # Data loading tests
+pytest tests/test_contrastive_learning.py # Contrastive learning tests
 ```
 
-### Test Categories
+## 📚 Examples and Tutorials
 
-The test suite includes:
+Check out the `examples/` directory:
 
-- **Model Components** (`tests/test_model_components.py`):
-  - Encoder functionality and masking
-  - Decoder reconstruction capabilities
-  - WiMAE model integration
-  - ContraWiMAE contrastive learning
+- **`training_demo.ipynb`**: Complete training demonstration with both WiMAE and ContraWiMAE
 
-- **Model Integration** (`tests/test_models.py`):
-  - Full model forward passes
-  - Checkpoint saving/loading
-  - Data integration with datasets
+## 🤝 Contributing
 
-- **Data Loading** (`tests/test_data_loading.py`):
-  - OptimizedPreloadedDataset functionality
-  - MultiNPZDataset memory mapping
-  - Data normalization utilities
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes
+4. Add tests for new functionality
+5. Run the test suite (`pytest`)
+6. Commit your changes (`git commit -m 'Add amazing feature'`)
+7. Push to the branch (`git push origin feature/amazing-feature`)
+8. Open a Pull Request
 
-- **Patching and Masking** (`tests/test_patching_and_masking.py`):
-  - Complex input patching
-  - Patch size handling
-  - Data preservation
+## 📄 License
 
-- **Contrastive Learning** (`tests/test_contrastive_learning.py`):
-  - ContrastiveHead functionality
-  - InfoNCE loss computation
-  - Feature extraction
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
-### Test Configuration
+## 📞 Contact
 
-Tests use realistic configurations:
-- **Batch size**: 256 (for thorough testing)
-- **Patch size**: (1, 16) for 32×32 complex inputs
-- **Number of patches**: 128 (64 complex patches × 2 for real/imaginary)
-- **Model dimensions**: 64-dimensional encoder/decoder
+For questions, issues, or collaboration opportunities:
 
-### Continuous Integration
+- Create an issue on GitHub
+- Email: your.email@example.com
 
-The test suite is designed to run quickly and reliably:
-- All tests should pass on CPU
-- No external data dependencies
-- Deterministic test data generation
-- Comprehensive error checking
+## 🙏 Acknowledgments
 
-### Git Hooks
+- Inspired by Vision Transformer (ViT) and Masked Autoencoder (MAE) architectures
+- Built with PyTorch and modern transformer implementations
+- Thanks to the wireless communications research community
 
-The repository includes a pre-push hook that automatically runs tests before pushing to ensure code quality:
-
-#### Automatic Test Execution
-
-The pre-push hook will:
-1. Check if required packages (pytest, torch, numpy, yaml) are available
-2. Run all test suites (data loading, contrastive learning, model components)
-3. Only allow the push if all tests pass
-
-#### Usage
-
-```bash
-# Normal push (tests will run automatically)
-git push
-
-# Skip tests (use with caution)
-git push --no-verify
-```
-
-#### Setup for New Developers
-
-When cloning the repository, the hook should be automatically active. If you need to set it up manually:
-
-```bash.
-
-It doesn't assume a specific conda environment name, so it works across different developer setups.
-
-**Quick setup for new developers:**
-```bash
-pip install -r requirements.txt
-```
-
-### Debugging Tests
-
-If tests fail, you can debug them with:
-
-```bash
-# Run with detailed output
-pytest -v -s
-
-# Run single test with debugger
-pytest tests/test_models.py::TestWiMAEModel::test_wimae_forward_complex_input -s
-
-# Run tests and stop on first failure
-pytest -x
-
-# Run tests and show local variables on failure
-pytest --tb=long
-```
-
-## Project Structure
-
-```
-WirelessContrastiveMaskedLearning/
-├── configs/                    # Configuration files
-│   └── default_training.yaml   # Default training config
-├── examples/                   # Example scripts
-│   └── training_demo.ipynb     # Training demonstration
-├── wimae/                      # Main package
-│   ├── models/                 # Model implementations
-│   └── training/               # Training utilities
-└── tests/                      # Unit tests
-```
-
-## Features
-
-- **Optimized Data Loading**: Pre-loaded datasets for maximum training speed
-- **Flexible Configuration**: YAML-based configuration system
-- **Multiple Models**: Support for both WiMAE and ContraWiMAE
-- **Efficient Training**: Gradient accumulation, mixed precision, and early stopping
-- **Comprehensive Logging**: TensorBoard integration and checkpointing
-- **Debug Support**: Easy debugging with small datasets
-
-## Citation
+## 📖 Citation
 
 If you use this code in your research, please cite:
 
 ```bibtex
-@article{your-paper-2024,
+@software{wireless_contrastive_masked_learning,
   title={Wireless Contrastive Masked Learning},
-  author={Your Name},
-  journal={arXiv preprint},
-  year={2024}
+  author={Research Team},
+  year={2024},
+  url={https://github.com/yourusername/WirelessContrastiveMaskedLearning}
 }
 ``` 
