@@ -97,73 +97,11 @@ trainer = ContraWiMAETrainer(config)
 trainer.train()
 ```
 
-## Encoding
-
-### Encoder
-
-Interface for generating embeddings from trained models.
-
-```python
-from wimae.encoding import Encoder
-
-encoder = Encoder(config)
-embeddings = encoder.encode_data("path/to/data.npz")
-encoder.save_embeddings(embeddings, "embeddings.pt")
-```
-
-**Methods:**
-- `encode_data(data_path, data_format="npz")`: Encode data and return embeddings
-- `encode_and_save(data_path, data_format="npz", filename=None)`: Encode data and save embeddings
-- `save_embeddings(embeddings, filename=None)`: Save embeddings to file
-- `from_config(config_path)`: Create encoder from configuration file
-- `from_checkpoint(checkpoint_path, device="cuda")`: Create encoder from model checkpoint
-
-## Downstream Tasks
-
-### BeamPredictionTask
-
-Beam prediction downstream task.
-
-```python
-from wimae.downstream import BeamPredictionTask
-
-task = BeamPredictionTask(config)
-train_loader, val_loader, test_loader = task.load_data()
-history = task.train(train_loader, val_loader)
-metrics = task.evaluate(test_loader)
-```
-
-### LOSClassificationTask
-
-Line-of-Sight classification downstream task.
-
-```python
-from wimae.downstream import LOSClassificationTask
-
-task = LOSClassificationTask(config)
-train_loader, val_loader, test_loader = task.load_data()
-history = task.train(train_loader, val_loader)
-metrics = task.evaluate(test_loader)
-```
-
-### DownstreamTrainer
-
-Unified trainer for downstream tasks.
-
-```python
-from wimae.downstream import DownstreamTrainer
-
-trainer = DownstreamTrainer(config)
-metrics = trainer.run()
-```
-
 ## Configuration
 
-The package uses YAML configuration files for all components. Example configurations are provided in the `configs/` directory:
+The package uses YAML configuration files for model training. Example configurations are provided in the `configs/` directory:
 
 - `default_training.yaml`: Training configuration
-- `default_encoding.yaml`: Encoding configuration
-- `default_downstream.yaml`: Downstream task configuration
 
 ## Command Line Interface
 

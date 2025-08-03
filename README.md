@@ -307,18 +307,12 @@ pytest --tb=long
 ```
 WirelessContrastiveMaskedLearning/
 ├── configs/                    # Configuration files
-│   ├── default_training.yaml   # Default training config
-│   ├── default_encoding.yaml   # Encoding config
-│   └── default_downstream.yaml # Downstream tasks config
+│   └── default_training.yaml   # Default training config
 ├── examples/                   # Example scripts
-│   ├── training_example.py     # Training with optimized data loading
-│   ├── encoding_example.py
-│   └── downstream_example.py
+│   └── training_demo.ipynb     # Training demonstration
 ├── wimae/                      # Main package
 │   ├── models/                 # Model implementations
-│   ├── training/               # Training utilities
-│   ├── encoding/               # Encoding utilities
-│   └── downstream/             # Downstream tasks
+│   └── training/               # Training utilities
 └── tests/                      # Unit tests
 ```
 
