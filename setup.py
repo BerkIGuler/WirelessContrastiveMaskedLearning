@@ -15,12 +15,12 @@ requirements = (this_directory / "requirements.txt").read_text().splitlines()
 setup(
     name="wireless-contrastive-masked-learning",
     version="0.1.0",
-    author="Research Team",
-    author_email="your.email@example.com",
-    description="PyTorch implementation of Wireless Masked Autoencoders (WiMAE) and Contrastive WiMAE for wireless channel data modeling",
+    author="Berkay Guler",
+    author_email="gulerb@uci.edu",
+    description="Official implementation of 'A Multi-Task Foundation Model for Wireless Channel Representation Using Contrastive and Masked Autoencoder Learning' (arXiv:2505.09160)",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/yourusername/WirelessContrastiveMaskedLearning",
+    url="https://github.com/BerkIGuler/WirelessContrastiveMaskedLearning",
     packages=find_packages(),
     classifiers=[
         "Development Status :: 3 - Alpha",
@@ -37,18 +37,7 @@ setup(
     ],
     python_requires=">=3.8",
     install_requires=requirements,
-    extras_require={
-        "dev": [
-            "pytest>=7.0.0",
-            "black>=22.0.0",
-            "flake8>=4.0.0",
-            "mypy>=0.991",
-        ],
-        "docs": [
-            "sphinx>=4.0.0",
-            "sphinx-rtd-theme>=1.0.0",
-        ],
-    },
+
 
     include_package_data=True,
     package_data={
