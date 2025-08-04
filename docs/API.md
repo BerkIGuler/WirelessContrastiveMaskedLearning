@@ -1,142 +1,78 @@
-# API Documentation
+# Automated API Documentation
 
-## Models
+> **Important:** This package now uses **automated API documentation** generated directly from code docstrings!
 
-### WiMAE
+## How to Access Current API Documentation
 
-The base Wireless Masked Autoencoder model.
-
-```python
-from wimae.models import WiMAE
-
-model = WiMAE(
-    patch_size=(4, 4),
-    encoder_dim=256,
-    encoder_layers=12,
-    encoder_nhead=8,
-    decoder_layers=8,
-    decoder_nhead=8,
-    mask_ratio=0.75,
-    device="cuda"
-)
-```
-
-**Parameters:**
-- `patch_size`: Tuple of (height, width) for each patch
-- `encoder_dim`: Dimension of encoder
-- `encoder_layers`: Number of encoder layers
-- `encoder_nhead`: Number of encoder attention heads
-- `decoder_layers`: Number of decoder layers
-- `decoder_nhead`: Number of decoder attention heads
-- `mask_ratio`: Ratio of patches to mask during training
-- `device`: Device to place the model on
-
-**Methods:**
-- `forward(x, mask_ratio=None, return_reconstruction=True)`: Forward pass
-- `encode(x)`: Encode input data without masking
-- `reconstruct(x)`: Reconstruct input data
-- `get_embeddings(x, pooling="mean")`: Get embeddings from encoded features
-- `save_checkpoint(filepath, **kwargs)`: Save model checkpoint
-- `from_checkpoint(filepath, device=None)`: Load model from checkpoint
-
-### ContraWiMAE
-
-Contrastive Wireless Masked Autoencoder that extends WiMAE.
-
-```python
-from wimae.models import ContraWiMAE
-
-model = ContraWiMAE(
-    patch_size=(4, 4),
-    encoder_dim=256,
-    encoder_layers=12,
-    encoder_nhead=8,
-    decoder_layers=8,
-    decoder_nhead=8,
-    mask_ratio=0.75,
-    contrastive_dim=256,
-    temperature=0.1,
-    snr_min=0.0,
-    snr_max=30.0,
-    device="cuda"
-)
-```
-
-**Additional Parameters:**
-- `contrastive_dim`: Dimension of contrastive projection
-- `temperature`: Temperature parameter for contrastive loss
-- `snr_min`: Minimum SNR for augmentations
-- `snr_max`: Maximum SNR for augmentations
-
-**Additional Methods:**
-- `forward_with_augmentation(x, mask_ratio=None, return_reconstruction=True)`: Forward pass with augmentation
-- `compute_contrastive_loss(features1, features2, temperature=None)`: Compute contrastive loss
-- `get_contrastive_embeddings(x, pooling="mean")`: Get contrastive embeddings
-
-## Training
-
-### WiMAETrainer
-
-Trainer for WiMAE models.
-
-```python
-from wimae.training import WiMAETrainer
-
-trainer = WiMAETrainer(config)
-trainer.train()
-```
-
-### ContraWiMAETrainer
-
-Trainer for ContraWiMAE models.
-
-```python
-from wimae.training import ContraWiMAETrainer
-
-trainer = ContraWiMAETrainer(config)
-trainer.train()
-```
-
-## Configuration
-
-The package uses YAML configuration files for model training. Example configurations are provided in the `configs/` directory:
-
-- `default_training.yaml`: Training configuration
-
-## Command Line Interface
-
-The package provides command-line scripts for easy usage:
+### 1. Build and View Locally (Recommended)
 
 ```bash
-# Training
-python examples/training_example.py configs/default_training.yaml --model wimae
+# Install documentation dependencies
+pip install sphinx sphinx-autodoc-typehints sphinx-rtd-theme myst-parser
 
-# Encoding
-python examples/encoding_example.py --checkpoint model.pt --data data.npz
+# Build documentation
+make docs
+# OR: python scripts/build_docs.py
 
-# Downstream tasks
-python examples/downstream_example.py configs/default_downstream.yaml --task beam_prediction
+# Serve locally and view in browser
+make docs-serve
+# OR: python scripts/build_docs.py --serve
 ```
 
-## Data Format
+Then open: http://localhost:8000
 
-The package expects wireless channel data in `.npz` format with the following structure:
-- Channel data as numpy arrays with shape (batch_size, channels, height, width)
-- Labels for downstream tasks as separate files
+### 2. Quick Commands
 
-## Metrics
+```bash
+make docs        # Build complete documentation
+make docs-serve  # Serve documentation locally  
+make docs-clean  # Clean build artifacts
+```
 
-### Beam Prediction
-- Top-1 accuracy
-- Top-3 accuracy
-- Cross-entropy loss
+## Why Automated Documentation?
 
-### LOS Classification
-- Accuracy
-- Precision
-- Recall
-- F1-score
-- AUC
-- Specificity
-- NPV
-- Confusion matrix elements 
+- **Always Up-to-Date**: API docs are generated directly from code docstrings
+- **No Manual Maintenance**: Documentation updates automatically when code changes
+- **Comprehensive Coverage**: All classes, methods, and functions included
+- **Professional Quality**: Sphinx-generated docs with cross-references and search
+
+## Documentation Structure
+
+The automated system generates:
+
+- **API Reference**: Complete class and method documentation
+- **User Guides**: Installation, quickstart, configuration  
+- **Examples**: Training workflows and usage patterns
+- **Developer Docs**: Contributing guidelines and changelog
+
+## For Developers
+
+When updating code, **update docstrings (not this file)**:
+
+```python
+class MyClass:
+    """
+    Brief description of the class.
+    
+    Args:
+        param1: Description of parameter
+        param2: Another parameter description
+        
+    Returns:
+        Description of return value
+        
+    Example:
+        >>> obj = MyClass(param1="value")
+        >>> result = obj.method()
+    """
+```
+
+Then rebuild docs: `make docs`
+
+## Need the Old Manual API.md?
+
+The comprehensive manual API documentation is preserved in this file's git history. However, we strongly recommend using the new automated system as it will always be current with your code.
+
+---
+
+**Bottom Line**: Run `make docs && make docs-serve` to access complete, up-to-date API documentation! 
