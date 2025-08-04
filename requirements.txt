@@ -1,3 +1,12 @@
+# WiMAE Package Dependencies
+#
+# For installation, we recommend using setup.py extras:
+#   pip install -e ".[docs]"  # Core + documentation tools
+#   pip install -e ".[dev]"   # Core + docs + testing
+# 
+# This file installs ALL dependencies and is provided for completeness.
+# Use: pip install -r requirements.txt
+
 # Core Dependencies - Actually used in codebase
 torch>=2.0.0
 numpy>=1.21.0

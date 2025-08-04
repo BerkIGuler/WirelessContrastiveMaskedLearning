@@ -9,8 +9,28 @@ from pathlib import Path
 this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text()
 
-# Read requirements
-requirements = (this_directory / "requirements.txt").read_text().splitlines()
+# Core requirements (minimal dependencies)
+core_requirements = [
+    "torch>=2.0.0",
+    "torchvision>=0.15.0", 
+    "numpy>=1.21.0",
+    "PyYAML>=6.0",
+    "tqdm>=4.64.0",
+    "tensorboard>=2.10.0",
+    "scipy>=1.9.0",
+]
+
+# Optional extras
+docs_requirements = [
+    "sphinx>=7.0.0",
+    "sphinx-autodoc-typehints>=1.24.0",
+    "sphinx-rtd-theme>=1.3.0",
+    "myst-parser>=2.0.0",
+]
+
+dev_requirements = [
+    "pytest>=7.0.0",
+] + docs_requirements
 
 setup(
     name="wireless-contrastive-masked-learning",
@@ -36,9 +56,12 @@ setup(
         "Topic :: Scientific/Engineering :: Information Analysis",
     ],
     python_requires=">=3.8",
-    install_requires=requirements,
-
-
+    install_requires=core_requirements,
+    extras_require={
+        "docs": docs_requirements,
+        "dev": dev_requirements,
+        "all": dev_requirements,
+    },
     include_package_data=True,
     package_data={
         "wimae": ["configs/*.yaml"],

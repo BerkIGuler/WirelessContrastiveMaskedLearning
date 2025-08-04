@@ -80,13 +80,31 @@ cd WirelessContrastiveMaskedLearning
 pip install -e .
 ```
 
-### Dependencies
+### Installation Options
 
-The package has minimal dependencies (only 7 core packages):
+**Basic installation** (core dependencies only):
+```bash
+pip install -e .
+```
 
+**With documentation tools**:
+```bash
+pip install -e ".[docs]"
+```
+
+**Development installation** (includes docs + testing):
+```bash
+pip install -e ".[dev]"
+```
+
+**All dependencies** (alternative):
 ```bash
 pip install -r requirements.txt
 ```
+
+### Dependencies
+
+The package has minimal core dependencies (7 packages) with optional extras for documentation and development.
 
 ## Repository Structure
 
@@ -116,7 +134,8 @@ WirelessContrastiveMaskedLearning/
 │       ├── train_contramae.py # ContraWiMAE trainer
 │       └── data_utils.py      # Data loading utilities
 ├── tests/                     # Unit tests
-├── docs/                      # Documentation
+├── docs/                      # Automated documentation (Sphinx)
+├── scripts/                   # Build and utility scripts
 └── data/                      # Data directory (user-provided)
 ```
 
@@ -527,6 +546,68 @@ pytest tests/test_models.py              # Model tests
 pytest tests/test_data_loading.py        # Data loading tests
 pytest tests/test_contrastive_learning.py # Contrastive learning tests
 ```
+
+## Documentation
+
+This package includes comprehensive, automatically-generated API documentation.
+
+### Building Documentation
+
+**Install documentation dependencies**:
+```bash
+pip install -e ".[docs]"
+# OR
+make docs-install
+```
+
+**Build and view documentation**:
+```bash
+# Build documentation
+make docs
+
+# Serve locally at http://localhost:8000
+make docs-serve
+```
+
+**Available commands**:
+```bash
+make docs        # Build complete documentation
+make docs-serve  # Serve documentation locally  
+make docs-clean  # Clean build artifacts
+make help        # Show all available commands
+```
+
+### Documentation Features
+
+- **Auto-Generated API Reference**: Complete class and method documentation from code docstrings
+- **User Guides**: Installation, quickstart, and configuration guides
+- **Professional Quality**: Sphinx-generated with search, cross-references, and navigation
+- **Always Up-to-Date**: Documentation automatically reflects code changes
+
+### For Developers
+
+When updating code, update docstrings (not API files manually):
+
+```python
+def my_function(param1: str, param2: int) -> bool:
+    """
+    Brief description of the function.
+    
+    Args:
+        param1: Description of parameter
+        param2: Another parameter description
+        
+    Returns:
+        Description of return value
+        
+    Example:
+        >>> result = my_function("test", 42)
+        >>> print(result)
+        True
+    """
+```
+
+Then rebuild documentation: `make docs`
 
 ## Examples and Tutorials
 
