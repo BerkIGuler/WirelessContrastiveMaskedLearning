@@ -7,52 +7,9 @@ A PyTorch implementation of A Multi-Task Foundation Model for Wireless Channel R
 
 This repository is the official implementation of the paper ["A Multi-Task Foundation Model for Wireless Channel Representation Using Contrastive and Masked Autoencoder Learning"](https://arxiv.org/abs/2505.09160) (arXiv:2505.09160).
 
-We propose two transformer-based foundation models designed specifically for wireless channel representation learning:
+We propose a transformer-based foundation model designed specifically for wireless channel representation learning:
 
-- **WiMAE (Wireless Masked Autoencoder)**: A transformer-based encoder-decoder foundation model pretrained on realistic multi-antenna wireless channel datasets using masked autoencoding
-- **ContraWiMAE (Contrastive WiMAE)**: Enhances WiMAE by incorporating contrastive learning alongside reconstruction in a unified multi-task framework, warm-starting from pretrained WiMAE weights
-
-Both models use patch-based processing of complex-valued wireless channel matrices and demonstrate superior performance across multiple downstream tasks compared to existing wireless channel foundation models.
-
-## Paper Summary
-
-This work addresses fundamental limitations in current wireless foundation models and introduces novel multi-task learning approaches:
-
-### Problem Addressed
-Current wireless channel representation methods suffer from key limitations:
-- **Shallow masking**: Existing models rely on low masking ratios, reducing pretraining complexity
-- **Isolated approaches**: Contrastive and reconstructive methods have complementary strengths but are typically used separately
-- **Limited transferability**: Task-specific architectures requiring retraining for each use case
-
-### Technical Innovation
-
-**WiMAE Architecture:**
-- **Minimal Modifications**: Minimal modifications to well-established Masked Autoencoders (MAE) framework.
-- **Asymmetric encoder-decoder design**: Encoder processes only visible patches, lightweight decoder reconstructs masked portions
-- **High masking ratios** (optimal at 60%): Forces robust representation learning from limited observations
-- **Transformer-based**: 12-layer encoder with moderate depth for optimal efficiency
-
-**ContraWiMAE Enhancement:**
-- **Multi-task framework**: Combines reconstruction and contrastive learning objectives
-- **Warm-start strategy**: Initializes from pretrained WiMAE weights for efficient training
-- **Noise-based positive pairs**: Uses AWGN injection to generate positive samples for contrastive learning
-
-### Experimental Validation
-
-### Key Results
-- **WiMAE**: Up to 36.5% accuracy improvement over baselines in linear probing tasks
-- **ContraWiMAE**: Additional 16.1% improvement over WiMAE, 42.3% over other baselines
-- **Data Efficiency**: Achieves baseline performance using only 1% of training data
-- **Linear Separability**: Enhanced discriminative features enable simpler downstream models
-- **Robustness**: Strong transferability across unseen wireless scenarios
-
-## Key Features & Contributions
-
-### Research Contributions
-- **Foundation Models for Wireless**: First application of masked autoencoder paradigm specifically designed for wireless channel data
-- **Multi-Task Learning**: Novel combination of reconstruction and contrastive objectives in unified framework
-- **State-of-the-Art Performance**: Superior results compared to existing wireless channel foundation models
-- **Transfer Learning**: Effective warm-starting strategy from WiMAE to ContraWiMAE
+- **ContraWiMAE (Wireless Masked Autoencoder)**: A transformer-based foundation model pretrained on realistic wireless channel datasets using a novel contrastive learning objective alongside MAE style reconstruction in a unified multi-task framework. ContraWiMAE uses patch-based processing of complex-valued wireless channel matrices and demonstrates an impressive performance across channel estimation, beam management, and channel characterization tasks.
 
 ### Implementation Features
 - **Modular Architecture**: Clean separation of encoder, decoder, and contrastive components
@@ -62,15 +19,8 @@ Current wireless channel representation methods suffer from key limitations:
 - **Efficient Training**: Optimized data loading and training pipeline
 - **Flexible Configuration**: YAML-based configuration system
 - **Comprehensive Logging**: TensorBoard integration and checkpoint management
-- **Well-Tested**: Extensive test suite covering all components
 
 ## Installation
-
-### Requirements
-
-- Python 3.8+
-- PyTorch 2.0+
-- CUDA-compatible GPU (recommended)
 
 ### Install from Source
 
