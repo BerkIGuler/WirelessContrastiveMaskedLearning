@@ -33,11 +33,11 @@ dev_requirements = [
 ] + docs_requirements
 
 setup(
-    name="wireless-contrastive-masked-learning",
+    name="ContraWiMAE",
     version="0.1.0",
     author="Berkay Guler",
     author_email="gulerb@uci.edu",
-    description="Official implementation of 'A Multi-Task Foundation Model for Wireless Channel Representation Using Contrastive and Masked Autoencoder Learning' (arXiv:2505.09160)",
+    description="Official implementation of 'A Multi-Task Foundation Model for Wireless Channel Representation Using Contrastive and Masked Autoencoder Learning'",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/BerkIGuler/WirelessContrastiveMaskedLearning",
@@ -63,8 +63,5 @@ setup(
         "all": dev_requirements,
     },
     include_package_data=True,
-    package_data={
-        "wimae": ["configs/*.yaml"],
-    },
     zip_safe=False,
 ) 
