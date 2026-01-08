@@ -241,7 +241,8 @@ class ContraWiMAE(WiMAE):
         Returns:
             Loaded ContraWiMAE model
         """
-        checkpoint = torch.load(filepath, map_location=device)
+        # weights_only=False is needed because checkpoint contains non-weight data (config dict)
+        checkpoint = torch.load(filepath, map_location=device, weights_only=False)
         
         # Extract model parameters
         patch_size = checkpoint["patch_size"]

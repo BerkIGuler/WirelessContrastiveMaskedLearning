@@ -64,9 +64,10 @@ model.eval()
 with torch.no_grad():
     embeddings = model.encode(channel_data)
     
-# Reconstruct data
+# Reconstruct data (encode with masking, then decode)
 with torch.no_grad():
-    reconstructed = model.reconstruct(channel_data)
+    encoded_features, ids_keep, ids_mask = model.encode(channel_data, apply_mask=True)
+    reconstructed = model.decode(encoded_features, ids_keep, ids_mask)
 ```
 
 ## More Examples

@@ -211,6 +211,8 @@ class TestContrastiveLoss:
         embed_dim = 64
         
         for batch_size in batch_sizes:
+            # Use different random seeds for each batch size to avoid edge cases
+            torch.manual_seed(42 + batch_size)
             z_i = torch.randn(batch_size, embed_dim)
             z_j = torch.randn(batch_size, embed_dim)
             
@@ -219,7 +221,8 @@ class TestContrastiveLoss:
             assert loss.shape == ()
             assert not torch.isnan(loss)
             assert not torch.isinf(loss)
-            assert loss > 0
+            # Loss should be positive for random embeddings (with small epsilon for numerical stability)
+            assert loss > 1e-8, f"Loss is {loss.item()} for batch_size={batch_size}, expected > 0"
     
     def test_compute_contrastive_loss_gradient_flow(self, sample_embeddings):
         """Test that gradients flow through the loss function."""

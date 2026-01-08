@@ -84,8 +84,12 @@ class TestWiMAEModel:
         assert encoded_features.shape == (batch_size, num_patches, wimae_model.encoder_dim)
     
     def test_wimae_reconstruct(self, wimae_model, complex_input):
-        """Test WiMAE reconstruct method."""
-        reconstructed = wimae_model.reconstruct(complex_input)
+        """Test WiMAE encode + decode for reconstruction."""
+        # Encode with masking
+        encoded_features, ids_keep, ids_mask = wimae_model.encode(complex_input, apply_mask=True)
+        
+        # Decode to reconstruct
+        reconstructed = wimae_model.decode(encoded_features, ids_keep, ids_mask)
         
         # Check output shape
         batch_size = complex_input.shape[0]
