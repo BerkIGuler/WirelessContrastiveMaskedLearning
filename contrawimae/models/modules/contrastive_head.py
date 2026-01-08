@@ -71,12 +71,16 @@ class ContrastiveHead(nn.Module):
         Returns:
             Scalar contrastive loss
         """
-        # Ensure features are normalized
-        features1 = F.normalize(features1, dim=1)
-        features2 = F.normalize(features2, dim=1)
+        # Normalize embeddings (standard practice in contrastive learning)
+        features1 = F.normalize(features1, p=2, dim=1)
+        features2 = F.normalize(features2, p=2, dim=1)
         
         # Get batch size
         batch_size = features1.shape[0]
+        
+        # Validate batch size - need at least 2 samples for contrastive learning
+        if batch_size < 2:
+            raise ValueError(f"Batch size must be at least 2 for contrastive learning, got {batch_size}")
 
         # Combine features from both views
         features = torch.cat([features1, features2], dim=0)  # [2B, D]
