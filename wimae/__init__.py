@@ -6,7 +6,7 @@ for wireless channel modeling.
 """
 
 __version__ = "0.1.0"
-__author__ = "Research Team"
+__author__ = "Berkay Guler"
 
 from .models import WiMAE, ContraWiMAE
 from .training import BaseTrainer

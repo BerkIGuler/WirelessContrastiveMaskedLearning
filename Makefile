@@ -1,9 +1,9 @@
-# WiMAE Documentation Makefile
+# ContraWiMAE Documentation Makefile
 
 .PHONY: docs docs-clean docs-serve docs-install help
 
 help:
-	@echo "WiMAE Documentation Commands:"
+	@echo "ContraWiMAE Documentation Commands:"
 	@echo "  docs         - Build complete documentation"
 	@echo "  docs-clean   - Clean build artifacts"
 	@echo "  docs-serve   - Serve documentation locally"
