@@ -9,7 +9,7 @@ import tempfile
 import os
 from pathlib import Path
 
-from wimae.training.data_utils import (
+from contrawimae.training.data_utils import (
     OptimizedPreloadedDataset,
     normalize_complex_matrix,
     denormalize_complex_matrix,

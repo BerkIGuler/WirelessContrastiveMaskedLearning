@@ -6,8 +6,8 @@ import pytest
 import torch
 import numpy as np
 
-from wimae.models.modules.patching import Patcher
-from wimae.models.modules.masking import MaskGenerator
+from contrawimae.models.modules.patching import Patcher
+from contrawimae.models.modules.masking import MaskGenerator
 
 
 class TestPatching:

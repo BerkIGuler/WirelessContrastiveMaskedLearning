@@ -6,10 +6,10 @@ import pytest
 import torch
 import torch.nn as nn
 
-from wimae.models.base import WiMAE
-from wimae.models.contramae import ContraWiMAE
-from wimae.models.modules.encoder import Encoder
-from wimae.models.modules.decoder import Decoder
+from contrawimae.models.base import WiMAE
+from contrawimae.models.contramae import ContraWiMAE
+from contrawimae.models.modules.encoder import Encoder
+from contrawimae.models.modules.decoder import Decoder
 
 
 class TestEncoder:

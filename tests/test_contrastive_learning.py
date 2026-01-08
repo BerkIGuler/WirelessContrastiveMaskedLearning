@@ -6,8 +6,8 @@ import pytest
 import torch
 import torch.nn.functional as F
 
-from wimae.models.modules.contrastive_head import ContrastiveHead
-from wimae.models.modules.contra_losses import compute_contrastive_loss
+from contrawimae.models.modules.contrastive_head import ContrastiveHead
+from contrawimae.models.modules.contra_losses import compute_contrastive_loss
 
 
 class TestContrastiveHead:

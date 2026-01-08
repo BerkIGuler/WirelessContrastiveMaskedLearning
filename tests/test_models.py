@@ -9,8 +9,8 @@ from pathlib import Path
 import tempfile
 import os
 
-from wimae.models import WiMAE, ContraWiMAE
-from wimae.training.data_utils import OptimizedPreloadedDataset
+from contrawimae.models import WiMAE, ContraWiMAE
+from contrawimae.training.data_utils import OptimizedPreloadedDataset
 
 
 class TestWiMAEModel:

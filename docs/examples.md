@@ -19,13 +19,13 @@ This notebook demonstrates:
 ### Train WiMAE
 
 ```bash
-python wimae/training/train_wimae.py configs/default_training.yaml
+python contrawimae/training/train_wimae.py configs/default_training.yaml
 ```
 
 ### Train ContraWiMAE
 
 ```bash
-python wimae/training/train_contramae.py configs/default_training.yaml
+python contrawimae/training/train_contramae.py configs/default_training.yaml
 ```
 
 ## Programmatic Usage
@@ -34,7 +34,7 @@ python wimae/training/train_contramae.py configs/default_training.yaml
 
 ```python
 import yaml
-from wimae.training.train_wimae import WiMAETrainer
+from contrawimae.training.train_wimae import WiMAETrainer
 
 # Load and modify config
 with open("configs/default_training.yaml", "r") as f:
@@ -53,7 +53,7 @@ results = trainer.train()
 ### Model Inference
 
 ```python
-from wimae.models import WiMAE
+from contrawimae.models import WiMAE
 import torch
 
 # Load trained model
@@ -74,5 +74,5 @@ with torch.no_grad():
 
 For complete examples and tutorials, see:
 - `examples/training_demo.ipynb`: Complete training workflow
-- Source code in `wimae/` for implementation details
+- Source code in `contrawimae/` for implementation details
 - Test files in `tests/` for usage patterns 

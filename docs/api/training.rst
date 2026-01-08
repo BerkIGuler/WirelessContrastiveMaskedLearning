@@ -3,7 +3,7 @@ Training
 
 The training module provides trainers and utilities for model training.
 
-.. currentmodule:: wimae.training
+.. currentmodule:: contrawimae.training
 
 Base Trainer
 ------------

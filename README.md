@@ -66,7 +66,7 @@ WirelessContrastiveMaskedLearning/
 │   └── scenario_split_test.yaml
 ├── examples/                   # Example usage
 │   └── training_demo.ipynb     # Training demonstration
-├── wimae/                      # Main package
+├── contrawimae/               # Main package
 │   ├── models/                 # Model implementations
 │   │   ├── base.py            # WiMAE base model
 │   │   ├── contramae.py       # ContraWiMAE model
@@ -137,7 +137,7 @@ training:
 #### Train WiMAE (Base Model)
 
 ```python
-from wimae.training import WiMAETrainer
+from contrawimae.training import WiMAETrainer
 import yaml
 
 # Load configuration
@@ -154,7 +154,7 @@ trainer.train()
 #### Train ContraWiMAE (With Contrastive Learning)
 
 ```python
-from wimae.training import ContraWiMAETrainer
+from contrawimae.training import ContraWiMAETrainer
 import yaml
 
 # Load configuration
