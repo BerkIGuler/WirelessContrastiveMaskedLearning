@@ -1,24 +1,13 @@
 # ContraWiMAE: Wireless Contrastive Masked Learning
-
-A PyTorch implementation of A Multi-Task Foundation Model for Wireless Channel Representation Using Contrastive and Masked Autoencoder Learning
-
-
 ## Overview
 
-This repository is the official implementation of the paper ["A Multi-Task Foundation Model for Wireless Channel Representation Using Contrastive and Masked Autoencoder Learning"](https://arxiv.org/abs/2505.09160) (arXiv:2505.09160).
+This repository is the official implementation of the NeurIPS'25 best paper runner-up awardee at the [AI4NextG Workshop](https://ai4nextg.github.io/#).
+
+["Robust Channel Representation for Wireless: A Multi-Task Masked Contrastive Approach"](https://openreview.net/forum?id=KXNDs9ZGb9) (Also [see](https://arxiv.org/abs/2505.09160))
 
 We propose a transformer-based foundation model designed specifically for wireless channel representation learning:
 
 - **ContraWiMAE (Wireless Masked Autoencoder)**: A transformer-based foundation model pretrained on realistic wireless channel datasets using a novel contrastive learning objective alongside MAE style reconstruction in a unified multi-task framework. ContraWiMAE uses patch-based processing of complex-valued wireless channel matrices and demonstrates an impressive performance across channel estimation, beam management, and channel characterization tasks.
-
-### Implementation Features
-- **Modular Architecture**: Clean separation of encoder, decoder, and contrastive components
-- **Complex Data Support**: Native handling of complex-valued wireless channel matrices
-- **Patch-Based Processing**: Efficient patching strategy for wireless channel data
-- **Contrastive Learning**: Advanced contrastive learning with wireless-specific augmentations
-- **Efficient Training**: Optimized data loading and training pipeline
-- **Flexible Configuration**: YAML-based configuration system
-- **Comprehensive Logging**: TensorBoard integration and checkpoint management
 
 ## Installation
 
@@ -157,9 +146,9 @@ trainer = ContraWiMAETrainer(config)
 trainer.train()
 ```
 
-### 4. Transfer Learning: WiMAE → ContraWiMAE
+### 4. WiMAE → ContraWiMAE
 
-Load a pretrained WiMAE model into ContraWiMAE for transfer learning:
+Load a pretrained WiMAE model into ContraWiMAE:
 
 ```python
 # Create ContraWiMAE trainer
@@ -463,15 +452,6 @@ trainer.train()
 # Load only model weights (for inference)
 trainer.load_checkpoint("path/to/checkpoint.pth", model_only=True)
 ```
-
-### Transfer Learning
-
-```python
-# Load WiMAE into ContraWiMAE with strict=False
-# Missing contrastive_head weights will be warned about
-trainer.load_checkpoint("wimae_checkpoint.pth", strict=False, model_only=True)
-```
-
 ### Monitoring and Logging
 
 - **TensorBoard**: Automatic logging of losses, learning rates, and metrics
@@ -521,39 +501,6 @@ make docs-serve  # Serve documentation locally
 make docs-clean  # Clean build artifacts
 make help        # Show all available commands
 ```
-
-### Documentation Features
-
-- **Auto-Generated API Reference**: Complete class and method documentation from code docstrings
-- **User Guides**: Installation, quickstart, and configuration guides
-- **Professional Quality**: Sphinx-generated with search, cross-references, and navigation
-- **Always Up-to-Date**: Documentation automatically reflects code changes
-
-### For Developers
-
-When updating code, update docstrings (not API files manually):
-
-```python
-def my_function(param1: str, param2: int) -> bool:
-    """
-    Brief description of the function.
-    
-    Args:
-        param1: Description of parameter
-        param2: Another parameter description
-        
-    Returns:
-        Description of return value
-        
-    Example:
-        >>> result = my_function("test", 42)
-        >>> print(result)
-        True
-    """
-```
-
-Then rebuild documentation: `make docs`
-
 ## Examples and Tutorials
 
 Check out the `examples/` directory:
@@ -586,5 +533,5 @@ This repository implements the methods described in our paper. If you use this c
       url={https://arxiv.org/abs/2505.09160}, 
 }
 ```
-
-**Paper**: [A Multi-Task Foundation Model for Wireless Channel Representation Using Contrastive and Masked Autoencoder Learning](https://arxiv.org/abs/2505.09160) 
+**Paper 1**: [Robust Channel Representation for Wireless: A Multi-Task Masked Contrastive Approach](https://openreview.net/forum?id=KXNDs9ZGb9)
+**Paper 2**: [A Multi-Task Foundation Model for Wireless Channel Representation Using Contrastive and Masked Autoencoder Learning](https://arxiv.org/abs/2505.09160) 
