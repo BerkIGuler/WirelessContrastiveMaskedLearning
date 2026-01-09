@@ -1,4 +1,4 @@
-# Wireless Contrastive Masked Learning (WiMAE & ContraWiMAE)
+# ContraWiMAE: Wireless Contrastive Masked Learning
 
 A PyTorch implementation of A Multi-Task Foundation Model for Wireless Channel Representation Using Contrastive and Masked Autoencoder Learning
 

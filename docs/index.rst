@@ -1,7 +1,7 @@
-WiMAE Documentation
-===================
+ContraWiMAE Documentation
+==========================
 
-Welcome to the WiMAE (Wireless Masked Autoencoder) package documentation.
+Welcome to the ContraWiMAE (Wireless Contrastive Masked Autoencoder) package documentation.
 
 This package provides implementations of WiMAE and ContraWiMAE models for self-supervised learning on wireless channel data.
 

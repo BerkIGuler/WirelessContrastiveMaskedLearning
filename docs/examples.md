@@ -24,8 +24,20 @@ python contrawimae/training/train_wimae.py configs/default_training.yaml
 
 ### Train ContraWiMAE
 
-```bash
-python contrawimae/training/train_contramae.py configs/default_training.yaml
+```python
+import yaml
+from contrawimae.training.train_contramae import ContraWiMAETrainer
+
+# Load configuration
+with open("configs/default_training.yaml", "r") as f:
+    config = yaml.safe_load(f)
+
+# Set model type to contrawimae
+config["model"]["type"] = "contrawimae"
+
+# Create and train
+trainer = ContraWiMAETrainer(config)
+trainer.train()
 ```
 
 ## Programmatic Usage

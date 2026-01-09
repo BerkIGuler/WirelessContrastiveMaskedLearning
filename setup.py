@@ -1,5 +1,5 @@
 """
-Setup script for WirelessContrastiveMaskedLearning package.
+Setup script for ContraWiMAE package.
 """
 
 from setuptools import setup, find_packages

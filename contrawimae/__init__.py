@@ -1,5 +1,5 @@
 """
-Wireless Contrastive Masked Learning Package
+ContraWiMAE Package
 
 This package provides implementations of WiMAE and ContraWiMAE models
 for wireless channel modeling.

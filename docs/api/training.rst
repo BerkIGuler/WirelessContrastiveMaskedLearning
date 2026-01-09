@@ -13,6 +13,19 @@ Base Trainer
    :undoc-members:
    :show-inheritance:
 
+Model-Specific Trainers
+-----------------------
+
+.. autoclass:: contrawimae.training.train_wimae.WiMAETrainer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. autoclass:: contrawimae.training.train_contramae.ContraWiMAETrainer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Training Summary
 ----------------
 

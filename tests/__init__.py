@@ -1,3 +1,3 @@
 """
-Tests for WirelessContrastiveMaskedLearning package.
+Tests for ContraWiMAE package.
 """ 

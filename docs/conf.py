@@ -7,9 +7,9 @@ import sys
 sys.path.insert(0, os.path.abspath('..'))
 
 # -- Project information -----------------------------------------------------
-project = 'WiMAE'
-copyright = '2025, Research Team'
-author = 'Research Team'
+project = 'ContraWiMAE'
+copyright = '2025, Berkay Guler'
+author = 'Berkay Guler'
 release = '0.1.0'
 
 # -- General configuration ---------------------------------------------------
