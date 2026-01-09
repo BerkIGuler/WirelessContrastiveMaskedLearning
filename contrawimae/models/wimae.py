@@ -1,10 +1,10 @@
 """
-Base WiMAE model implementation.
+WiMAE model implementation.
 """
 
 import torch
 import torch.nn as nn
-from typing import Optional, Tuple, Dict, Any
+from typing import Optional, Tuple, Dict, Any, Union
 
 from .modules import Encoder, Decoder, Patcher
 
@@ -20,12 +20,12 @@ class WiMAE(nn.Module):
     def __init__(
         self,
         patch_size: Tuple[int, int],
-        encoder_dim: int = 256,
+        encoder_dim: int = 64,
         encoder_layers: int = 12,
-        encoder_nhead: int = 8,
-        decoder_layers: int = 8,
+        encoder_nhead: int = 16,
+        decoder_layers: int = 4,
         decoder_nhead: int = 8,
-        mask_ratio: float = 0.6,
+        mask_ratio: float = 0.9,
         device: Optional[torch.device] = None,
     ):
         """
@@ -38,7 +38,7 @@ class WiMAE(nn.Module):
             encoder_nhead: Number of encoder attention heads
             decoder_layers: Number of decoder layers
             decoder_nhead: Number of decoder attention heads
-            mask_ratio: Ratio of patches to mask during training
+            mask_ratio: Ratio of masked patches to all patches during training
             device: Device to place the model on
         """
         super().__init__()
@@ -51,7 +51,7 @@ class WiMAE(nn.Module):
         # Initialize components
         self.patcher = Patcher(patch_size)
         
-        # Get patch dimension (for complex channel matrices, this is patch_height * patch_width)
+        # Get patch dimension
         patch_dim = patch_size[0] * patch_size[1]
         
         self.encoder = Encoder(
@@ -83,7 +83,7 @@ class WiMAE(nn.Module):
         Forward pass through the WiMAE model.
         
         Args:
-            x: Input tensor (handles both complex and regular tensors)
+            x: Input complex tensor H ∈ C^(B×M×N) where B is batch size, M and N are matrix dimensions
             mask_ratio: Masking ratio (uses self.mask_ratio if None)
             return_reconstruction: Whether to return reconstruction
             
@@ -116,41 +116,86 @@ class WiMAE(nn.Module):
         
         return output
     
-    def encode(self, x: torch.Tensor) -> torch.Tensor:
+    def encode(self, x: torch.Tensor, apply_mask: bool = False) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
         """
-        Encode input data without masking.
+        Encode input data (inference mode, no gradients).
         
         Args:
-            x: Input tensor
+            x: Input complex tensor H ∈ C^(B×M×N)
+            apply_mask: Whether to apply masking during encoding (default: False)
             
         Returns:
-            Encoded features tensor
+            If apply_mask=False:
+                Encoded features tensor of shape (B, seq_len, d_model)
+            If apply_mask=True:
+                Tuple of (encoded_features, ids_keep, ids_mask) where:
+                    - encoded_features: Encoded visible tokens (B, num_visible, d_model)
+                    - ids_keep: Indices of kept patches
+                    - ids_mask: Indices of masked patches
         """
         with torch.no_grad():
             patches = self.patcher(x)
-            encoded_features = self.encoder(patches, apply_mask=False)
-            return encoded_features
+            result = self.encoder(patches, apply_mask=apply_mask)
+            return result
     
-    def reconstruct(self, x: torch.Tensor) -> torch.Tensor:
+    def decode(
+        self,
+        encoded_features: torch.Tensor,
+        ids_keep: Optional[torch.Tensor] = None,
+        ids_mask: Optional[torch.Tensor] = None,
+        orig_sequence_length: Optional[int] = None,
+    ) -> torch.Tensor:
         """
-        Reconstruct input data without masking.
+        Decode encoded representations to reconstruct patches (inference mode, no gradients).
+        
+        This method decodes encoded features. If masking was applied during encoding,
+        ids_keep (and optionally ids_mask) must be provided to restore the original sequence order.
         
         Args:
-            x: Input tensor
+            encoded_features: Encoded features tensor
+                - If masking was applied: shape (B, num_visible, d_model)
+                - If no masking: shape (B, seq_len, d_model)
+            ids_keep: Indices of kept patches (required if masking was applied)
+            ids_mask: Indices of masked patches (optional, used to derive orig_sequence_length)
+            orig_sequence_length: Original sequence length (required if masking was applied and ids_mask not provided)
             
         Returns:
-            Reconstructed patches tensor
+            Reconstructed patches tensor of shape (B, orig_seq_len, patch_dim)
         """
         with torch.no_grad():
-            output = self.forward(x, mask_ratio=0.0, return_reconstruction=True)
-            return output["reconstructed_patches"]
+            if ids_keep is None:
+                # No masking was applied - all patches are present
+                orig_sequence_length = encoded_features.shape[1]
+                B = encoded_features.shape[0]
+                ids_keep = torch.arange(
+                    orig_sequence_length,
+                    device=encoded_features.device
+                ).unsqueeze(0).expand(B, -1)
+            else:
+                # Masking was applied - derive orig_sequence_length if not provided
+                if orig_sequence_length is None:
+                    if ids_mask is not None:
+                        # Derive from ids_keep and ids_mask
+                        orig_sequence_length = ids_keep.shape[1] + ids_mask.shape[1]
+                    else:
+                        raise ValueError(
+                            "Either orig_sequence_length or ids_mask must be provided when ids_keep is given"
+                        )
+            
+            reconstructed_patches = self.decoder(
+                encoded_features,
+                ids_keep,
+                orig_sequence_length
+            )
+            
+            return reconstructed_patches
     
     def get_embeddings(self, x: torch.Tensor, pooling: str = "mean") -> torch.Tensor:
         """
         Get embeddings from encoded features using specified pooling method.
         
         Args:
-            x: Input tensor
+            x: Input complex tensor H ∈ C^(B×M×N)
             pooling: Pooling method ("mean", "max")
             
         Returns:
@@ -166,6 +211,7 @@ class WiMAE(nn.Module):
             embeddings = torch.mean(encoded_features, dim=1)
         elif pooling == "max":
             # Max pooling over patches
+            # torch.max returns (values, indices) tuple, so we take [0] for values
             embeddings = torch.max(encoded_features, dim=1)[0]
         else:
             raise ValueError(f"Unsupported pooling method: {pooling}. Supported methods: 'mean', 'max'")
@@ -206,7 +252,8 @@ class WiMAE(nn.Module):
         Returns:
             Loaded WiMAE model
         """
-        checkpoint = torch.load(filepath, map_location=device)
+        # weights_only=False is needed because checkpoint contains non-weight data (config dict)
+        checkpoint = torch.load(filepath, map_location=device, weights_only=False)
         
         # Extract model parameters
         patch_size = checkpoint["patch_size"]
@@ -255,4 +302,4 @@ class WiMAE(nn.Module):
             "mask_ratio": self.mask_ratio,
             "total_parameters": total_params,
             "trainable_parameters": trainable_params,
-        } 
+        }

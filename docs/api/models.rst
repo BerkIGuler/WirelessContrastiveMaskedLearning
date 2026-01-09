@@ -3,7 +3,7 @@ Models
 
 The models module contains the main WiMAE and ContraWiMAE model implementations.
 
-.. currentmodule:: wimae.models
+.. currentmodule:: contrawimae.models
 
 Base Models
 -----------

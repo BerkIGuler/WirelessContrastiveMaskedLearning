@@ -1,4 +1,4 @@
-# WiMAE Package Dependencies
+# ContraWiMAE Package Dependencies
 #
 # For installation, we recommend using setup.py extras:
 #   pip install -e ".[docs]"  # Core + documentation tools
@@ -9,12 +9,14 @@
 
 # Core Dependencies - Actually used in codebase
 torch>=2.0.0
+torchvision>=0.15.0
 numpy>=1.21.0
 PyYAML>=6.0
-tqdm>=4.62.0
-tensorboard>=2.8.0
+tqdm>=4.64.0
+tensorboard>=2.10.0
+scipy>=1.9.0
 
-# Example/User Experience Dependencies  
+# Example Usage Dependencies  
 notebook>=6.4.0
 
 # Testing - Core functionality

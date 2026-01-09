@@ -3,9 +3,8 @@ ContraWiMAE trainer implementation.
 """
 
 import torch
-import torch.nn as nn
 from torch.utils.data import DataLoader
-from typing import Dict, Any, Tuple
+from typing import Dict
 from tqdm import tqdm
 
 from .train_wimae import WiMAETrainer
@@ -33,9 +32,9 @@ class ContraWiMAETrainer(WiMAETrainer):
         total_loss_val = 0.0
         num_batches = len(train_loader)
         
-        # Get loss weights
+        # Get loss weights (contrastive weight is derived from reconstruction weight)
         recon_weight = self.config["training"].get("reconstruction_weight", 0.9)
-        contrastive_weight = self.config["training"].get("contrastive_weight", 0.1)
+        contrastive_weight = 1.0 - recon_weight
         
         progress_bar = tqdm(train_loader, desc=f"Training Epoch {self.current_epoch}")
         
@@ -104,41 +103,33 @@ class ContraWiMAETrainer(WiMAETrainer):
         """
         self.model.eval()
         
-        total_masked_recon_loss = 0.0
-        total_full_recon_loss = 0.0
+        total_recon_loss = 0.0
         total_contrastive_loss = 0.0
-        total_masked_loss = 0.0
-        total_full_loss = 0.0
+        total_loss_val = 0.0
         num_batches = len(val_loader)
         
-        # Get loss weights
+        # Get loss weights (contrastive weight is derived from reconstruction weight)
         recon_weight = self.config["training"].get("reconstruction_weight", 0.9)
-        contrastive_weight = self.config["training"].get("contrastive_weight", 0.1)
+        contrastive_weight = 1.0 - recon_weight
         
         with torch.no_grad():
             for data in tqdm(val_loader, desc="Validation"):
                 # Move data to device
                 data = data.to(self.device)
                 
-                # Compute validation losses using model's method
-                losses = self.model.compute_validation_losses(data, self.criterion)
+                # Compute validation losses using model's method (same as training)
+                losses = self.model.compute_training_losses(data, self.criterion)
                 
                 # Apply weights to losses
-                masked_loss = recon_weight * losses["masked_recon_loss"] + contrastive_weight * losses["contrastive_loss"]
-                full_loss = recon_weight * losses["full_recon_loss"] + contrastive_weight * losses["contrastive_loss"]
+                total_loss = recon_weight * losses["reconstruction_loss"] + contrastive_weight * losses["contrastive_loss"]
                 
                 # Update metrics
-                total_masked_recon_loss += losses["masked_recon_loss"].item()
-                total_full_recon_loss += losses["full_recon_loss"].item()
+                total_recon_loss += losses["reconstruction_loss"].item()
                 total_contrastive_loss += losses["contrastive_loss"].item()
-                total_masked_loss += masked_loss.item()
-                total_full_loss += full_loss.item()
+                total_loss_val += total_loss.item()
         
         return {
-            "val_masked_recon_loss": total_masked_recon_loss / num_batches,  # Primary reconstruction metric
-            "val_full_recon_loss": total_full_recon_loss / num_batches,      # Secondary reconstruction metric
-            "val_contrastive_loss": total_contrastive_loss / num_batches,    # Contrastive metric
-            "val_masked_loss": total_masked_loss / num_batches,              # Primary total loss
-            "val_full_loss": total_full_loss / num_batches,                  # Secondary total loss
-            "val_loss": total_masked_loss / num_batches                      # For compatibility with base trainer
-        } 
+            "val_recon_loss": total_recon_loss / num_batches,
+            "val_contrastive_loss": total_contrastive_loss / num_batches,
+            "val_loss": total_loss_val / num_batches  # Required by base trainer for early stopping
+        }

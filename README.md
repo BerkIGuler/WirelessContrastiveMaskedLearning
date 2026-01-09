@@ -1,4 +1,4 @@
-# Wireless Contrastive Masked Learning (WiMAE & ContraWiMAE)
+# ContraWiMAE: Wireless Contrastive Masked Learning
 
 A PyTorch implementation of A Multi-Task Foundation Model for Wireless Channel Representation Using Contrastive and Masked Autoencoder Learning
 
@@ -7,52 +7,9 @@ A PyTorch implementation of A Multi-Task Foundation Model for Wireless Channel R
 
 This repository is the official implementation of the paper ["A Multi-Task Foundation Model for Wireless Channel Representation Using Contrastive and Masked Autoencoder Learning"](https://arxiv.org/abs/2505.09160) (arXiv:2505.09160).
 
-We propose two transformer-based foundation models designed specifically for wireless channel representation learning:
+We propose a transformer-based foundation model designed specifically for wireless channel representation learning:
 
-- **WiMAE (Wireless Masked Autoencoder)**: A transformer-based encoder-decoder foundation model pretrained on realistic multi-antenna wireless channel datasets using masked autoencoding
-- **ContraWiMAE (Contrastive WiMAE)**: Enhances WiMAE by incorporating contrastive learning alongside reconstruction in a unified multi-task framework, warm-starting from pretrained WiMAE weights
-
-Both models use patch-based processing of complex-valued wireless channel matrices and demonstrate superior performance across multiple downstream tasks compared to existing wireless channel foundation models.
-
-## Paper Summary
-
-This work addresses fundamental limitations in current wireless foundation models and introduces novel multi-task learning approaches:
-
-### Problem Addressed
-Current wireless channel representation methods suffer from key limitations:
-- **Shallow masking**: Existing models rely on low masking ratios, reducing pretraining complexity
-- **Isolated approaches**: Contrastive and reconstructive methods have complementary strengths but are typically used separately
-- **Limited transferability**: Task-specific architectures requiring retraining for each use case
-
-### Technical Innovation
-
-**WiMAE Architecture:**
-- **Minimal Modifications**: Minimal modifications to well-established Masked Autoencoders (MAE) framework.
-- **Asymmetric encoder-decoder design**: Encoder processes only visible patches, lightweight decoder reconstructs masked portions
-- **High masking ratios** (optimal at 60%): Forces robust representation learning from limited observations
-- **Transformer-based**: 12-layer encoder with moderate depth for optimal efficiency
-
-**ContraWiMAE Enhancement:**
-- **Multi-task framework**: Combines reconstruction and contrastive learning objectives
-- **Warm-start strategy**: Initializes from pretrained WiMAE weights for efficient training
-- **Noise-based positive pairs**: Uses AWGN injection to generate positive samples for contrastive learning
-
-### Experimental Validation
-
-### Key Results
-- **WiMAE**: Up to 36.5% accuracy improvement over baselines in linear probing tasks
-- **ContraWiMAE**: Additional 16.1% improvement over WiMAE, 42.3% over other baselines
-- **Data Efficiency**: Achieves baseline performance using only 1% of training data
-- **Linear Separability**: Enhanced discriminative features enable simpler downstream models
-- **Robustness**: Strong transferability across unseen wireless scenarios
-
-## Key Features & Contributions
-
-### Research Contributions
-- **Foundation Models for Wireless**: First application of masked autoencoder paradigm specifically designed for wireless channel data
-- **Multi-Task Learning**: Novel combination of reconstruction and contrastive objectives in unified framework
-- **State-of-the-Art Performance**: Superior results compared to existing wireless channel foundation models
-- **Transfer Learning**: Effective warm-starting strategy from WiMAE to ContraWiMAE
+- **ContraWiMAE (Wireless Masked Autoencoder)**: A transformer-based foundation model pretrained on realistic wireless channel datasets using a novel contrastive learning objective alongside MAE style reconstruction in a unified multi-task framework. ContraWiMAE uses patch-based processing of complex-valued wireless channel matrices and demonstrates an impressive performance across channel estimation, beam management, and channel characterization tasks.
 
 ### Implementation Features
 - **Modular Architecture**: Clean separation of encoder, decoder, and contrastive components
@@ -62,23 +19,26 @@ Current wireless channel representation methods suffer from key limitations:
 - **Efficient Training**: Optimized data loading and training pipeline
 - **Flexible Configuration**: YAML-based configuration system
 - **Comprehensive Logging**: TensorBoard integration and checkpoint management
-- **Well-Tested**: Extensive test suite covering all components
 
 ## Installation
-
-### Requirements
-
-- Python 3.8+
-- PyTorch 2.0+
-- CUDA-compatible GPU (recommended)
 
 ### Install from Source
 
 ```bash
 git clone https://github.com/BerkIGuler/WirelessContrastiveMaskedLearning.git
 cd WirelessContrastiveMaskedLearning
+
+# Install Git LFS (required for downloading data files)
+git lfs install
+
+# Pull data files (managed with Git LFS)
+git lfs pull
+
+# Install the package
 pip install -e .
 ```
+
+**Note**: The repository uses [Git LFS](https://git-lfs.github.com/) to manage data files. Make sure to install Git LFS and run `git lfs pull` to download the sample data files.
 
 ### Installation Options
 
@@ -104,22 +64,20 @@ pip install -r requirements.txt
 
 ### Dependencies
 
-The package has minimal core dependencies (7 packages) with optional extras for documentation and development.
+The package has minimal core dependencies with optional extras for documentation and development.
 
 ## Repository Structure
 
 ```
 WirelessContrastiveMaskedLearning/
 ├── configs/                    # Configuration files
-│   ├── default_training.yaml   # Default training configuration
-│   ├── scenario_split_simple.yaml
-│   └── scenario_split_test.yaml
+│   └── default_training.yaml   # Default training configuration
 ├── examples/                   # Example usage
 │   └── training_demo.ipynb     # Training demonstration
-├── wimae/                      # Main package
+├── contrawimae/               # Main package
 │   ├── models/                 # Model implementations
-│   │   ├── base.py            # WiMAE base model
-│   │   ├── contramae.py       # ContraWiMAE model
+│   │   ├── wimae.py           # WiMAE model
+│   │   ├── contrawimae.py     # ContraWiMAE model
 │   │   └── modules/           # Model components
 │   │       ├── encoder.py     # Transformer encoder
 │   │       ├── decoder.py     # Transformer decoder
@@ -157,37 +115,18 @@ Each NPZ file should contain a `'channels'` key with complex-valued channel matr
 - `N`: Number of channel realizations  
 - `H, W`: Spatial dimensions (e.g., antennas, subcarriers)
 
+**Note on Repository Data**: The data files in the `data/` folder are managed using [Git LFS](https://git-lfs.github.com/) and contain only a simple sample dataset for demonstration purposes. For the complete dataset used in the paper, please send an email.
 
 ### 2. Configure Training
 
-Edit the configuration file or use the default:
-
-```yaml
-# configs/default_training.yaml
-model:
-  type: "wimae"  # or "contramae"
-  patch_size: [1, 16]
-  encoder_dim: 64
-  encoder_layers: 12
-  mask_ratio: 0.6
-
-data:
-  data_dir: "data/pretrain"
-  normalize: true
-  val_split: 0.2
-
-training:
-  batch_size: 64
-  epochs: 100
-  device: "cuda:0"
-```
+Edit the configuration file or use the [default configuration](configs/default_training.yaml):
 
 ### 3. Train Models
 
 #### Train WiMAE (Base Model)
 
 ```python
-from wimae.training import WiMAETrainer
+from contrawimae.training.train_wimae import WiMAETrainer
 import yaml
 
 # Load configuration
@@ -204,14 +143,14 @@ trainer.train()
 #### Train ContraWiMAE (With Contrastive Learning)
 
 ```python
-from wimae.training import ContraWiMAETrainer
+from contrawimae.training.train_contramae import ContraWiMAETrainer
 import yaml
 
 # Load configuration
 with open("configs/default_training.yaml", "r") as f:
     config = yaml.safe_load(f)
 
-config["model"]["type"] = "contramae"
+config["model"]["type"] = "contrawimae"
 
 # Create and train
 trainer = ContraWiMAETrainer(config)
@@ -224,7 +163,7 @@ Load a pretrained WiMAE model into ContraWiMAE for transfer learning:
 
 ```python
 # Create ContraWiMAE trainer
-config["model"]["type"] = "contramae"
+config["model"]["type"] = "contrawimae"
 contra_trainer = ContraWiMAETrainer(config)
 
 # Load WiMAE weights (encoder/decoder), keep contrastive head random
@@ -244,13 +183,13 @@ The configuration system uses YAML files with hierarchical organization. Here's 
 ```yaml
 model:
   # Model Architecture Selection
-  type: "wimae"                    # Options: "wimae", "contramae"
+  type: "wimae"                    # Options: "wimae", "contrawimae"
                                    # - "wimae": Base masked autoencoder model
-                                   # - "contramae": Multi-task model with contrastive learning
+                                   # - "contrawimae": Multi-task model with contrastive learning
   
   # Patch Processing
-  patch_size: [1, 16]             # Patch dimensions [height, width]
-                                   # - [1, 16]: Process in frequency domain (16 subcarriers)
+  patch_size: [16, 1]             # Patch dimensions [height, width]
+                                   # - [16, 1]: Process in frequency domain (16 subcarriers)
                                    # - Determines input chunking for transformer
                                    # - Affects memory usage and spatial relationships
   
@@ -281,10 +220,10 @@ model:
                                    # - Must divide encoder_dim evenly
   
   # Masking Strategy
-  mask_ratio: 0.6                 # Fraction of patches to mask (0.0-0.9)
-                                   # - 0.6 is optimal from paper experiments
+  mask_ratio: 0.9                 # Fraction of patches to mask (0.0-0.9)
                                    # - Higher ratios force better representations
-                                   # - Too high (>0.8) makes task too difficult
+                                   # - Too high (>0.95) makes task too difficult
+                                   # - Default: 0.9 for strong pretraining
   
   # ContraWiMAE Specific Parameters
   contrastive_dim: 64             # Contrastive projection dimension
@@ -292,14 +231,14 @@ model:
                                    # - Usually same as encoder_dim
                                    # - Affects contrastive learning quality
   
-  temperature: 0.1                # Contrastive loss temperature
+  temperature: 0.2                # Contrastive loss temperature
                                    # - Controls hardness of negative sampling
-                                   # - Lower values (0.05-0.1) = harder negatives
+                                   # - Lower values (0.1-0.2) = harder negatives
                                    # - Higher values (0.3-0.5) = softer training
   
   # Augmentation Parameters (ContraWiMAE)
-  snr_min: 0.0                    # Minimum SNR for noise injection (dB)
-  snr_max: 30.0                   # Maximum SNR for noise injection (dB)
+  snr_min: 5.0                    # Minimum SNR for noise injection (dB)
+  snr_max: 40.0                   # Maximum SNR for noise injection (dB)
                                    # - Controls noise level for positive pairs
                                    # - Wider range = more diverse augmentations
 ```
@@ -319,9 +258,9 @@ data:
                                    # - Essential for stable training
                                    # - Uses complex-valued statistics
   
-  val_split: 0.2                  # Validation split ratio (0.0-0.5)
+  val_split: 0.1                  # Validation split ratio (0.0-0.5)
                                    # - Fraction of data for validation
-                                   # - 0.2 = 80% train, 20% validation
+                                   # - 0.1 = 90% train, 10% validation
                                    # - Applied after all data loading
   
   debug_size: null                # Limit dataset size for debugging
@@ -342,11 +281,17 @@ data:
                                    # - Used when calculate_statistics: false
                                    # - Must match your dataset distribution
   
-  # Advanced Data Loading (Optional)
-  scenario_split_config: "configs/scenario_split_simple.yaml"
-                                   # - Use file patterns for train/val/test splits
-                                   # - Alternative to random val_split
-                                   # - Allows scenario-based splitting
+  # Advanced Data Loading (Optional) - Scenario-based splitting
+  scenario_split_config:           # Embedded config (preferred)
+    train_patterns:
+      - "data_[0-6]\.npz"          # Regex patterns for training files
+      - "train_.*\.npz"             # Files starting with "train_"
+    val_patterns:
+      - "data_[78]\.npz"           # Regex patterns for validation files
+      - "val_.*\.npz"              # Files starting with "val_"
+    test_patterns:
+      - "data_9\.npz"              # Regex patterns for test files
+      - "test_.*\.npz"             # Files starting with "test_"
 ```
 
 ### Training Configuration
@@ -359,9 +304,9 @@ training:
                                    # - Larger batches (128, 256) for better gradients
                                    # - Smaller batches (32, 64) for limited memory
   
-  epochs: 3000                    # Number of training epochs
+  epochs: 100                      # Number of training epochs
+                                   # - Default: 100 for quick experimentation
                                    # - Paper uses 3000 for full pretraining
-                                   # - Can start with 100-500 for experimentation
                                    # - Early stopping prevents overfitting
   
   num_workers: 4                  # Number of data loading workers
@@ -386,9 +331,9 @@ training:
                                    # - Lower (1e-4) for fine-tuning
                                    # - Higher (1e-3) for quick experiments
     
-    weight_decay: 0.0             # L2 regularization strength
+    weight_decay: 0.001            # L2 regularization strength
                                    # - 0.0: No regularization
-                                   # - 0.01-0.1: Standard regularization
+                                   # - 0.001-0.01: Standard regularization
                                    # - Prevents overfitting
     
     betas: [0.9, 0.999]          # Adam momentum parameters
@@ -408,8 +353,9 @@ training:
     
     # Cosine scheduler parameters
     T_max: 3000                   # Maximum epochs for cosine cycle
-                                   # - Should match training epochs
-                                   # - Full cosine cycle over training
+                                   # - Can be set to full training cycle (e.g., 3000)
+                                   # - Works with early stopping (actual epochs may be less)
+                                   # - Full cosine cycle over T_max epochs
     
     eta_min: 0.000003            # Minimum learning rate
                                    # - Learning rate at end of cycle
@@ -430,10 +376,9 @@ training:
   
   # Loss Weighting (ContraWiMAE Multi-task)
   reconstruction_weight: 0.9      # Weight for reconstruction loss
-  contrastive_weight: 0.1         # Weight for contrastive loss
-                                   # - Must sum to reasonable total (typically 1.0)
+                                   # - contrastive_weight is automatically derived as (1 - reconstruction_weight)
                                    # - Higher reconstruction weight preserves base model
-                                   # - Higher contrastive weight emphasizes discriminability
+                                   # - Lower reconstruction weight emphasizes discriminability
   
   # Training Stability
   gradient_clip_val: 1.0          # Gradient clipping threshold
@@ -442,12 +387,12 @@ training:
                                    # - 1.0-5.0: Standard values
   
   # Early Stopping
-  patience: 20                    # Epochs to wait for improvement
+  patience: 5                     # Epochs to wait for improvement
                                    # - Training stops if no improvement
                                    # - Prevents overfitting
-                                   # - 10-50 epochs typical
+                                   # - 5-20 epochs typical
   
-  min_delta: 0.001               # Minimum improvement threshold
+  min_delta: 0.0001              # Minimum improvement threshold
                                    # - Smaller improvements ignored
                                    # - Prevents stopping on noise
   
@@ -489,18 +434,18 @@ logging:
 For complex data organization, use scenario-based splitting:
 
 ```yaml
-# In separate config file (e.g., scenario_split_simple.yaml)
-train_patterns:
-  - "data_[0-6]\.npz"           # Regex patterns for training files
-  - "train_.*\.npz"             # Files starting with "train_"
-
-val_patterns:
-  - "data_[78]\.npz"            # Regex patterns for validation files
-  - "val_.*\.npz"               # Files starting with "val_"
-
-test_patterns:
-  - "data_9\.npz"               # Regex patterns for test files
-  - "test_.*\.npz"              # Files starting with "test_"
+# Embedded in main config file (preferred)
+data:
+  scenario_split_config:
+    train_patterns:
+      - "data_[0-6]\.npz"           # Regex patterns for training files
+      - "train_.*\.npz"             # Files starting with "train_"
+    val_patterns:
+      - "data_[78]\.npz"            # Regex patterns for validation files
+      - "val_.*\.npz"               # Files starting with "val_"
+    test_patterns:
+      - "data_9\.npz"               # Regex patterns for test files
+      - "test_.*\.npz"              # Files starting with "test_"
 ```
 
 ## Training Features

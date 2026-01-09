@@ -9,8 +9,8 @@ from pathlib import Path
 import tempfile
 import os
 
-from wimae.models import WiMAE, ContraWiMAE
-from wimae.training.data_utils import OptimizedPreloadedDataset
+from contrawimae.models import WiMAE, ContraWiMAE
+from contrawimae.training.data_utils import OptimizedPreloadedDataset
 
 
 class TestWiMAEModel:
@@ -20,7 +20,7 @@ class TestWiMAEModel:
     def wimae_model(self):
         """Create a WiMAE model for testing."""
         return WiMAE(
-            patch_size=(1, 16),
+            patch_size=(16, 1),
             encoder_dim=64,
             encoder_layers=12,
             encoder_nhead=16,
@@ -41,7 +41,7 @@ class TestWiMAEModel:
     
     def test_wimae_model_creation(self, wimae_model):
         """Test WiMAE model creation."""
-        assert wimae_model.patch_size == (1, 16)
+        assert wimae_model.patch_size == (16, 1)
         assert wimae_model.encoder_dim == 64
         assert wimae_model.mask_ratio == 0.6
         assert str(wimae_model.device) == "cpu"
@@ -63,14 +63,14 @@ class TestWiMAEModel:
         
         # Check shapes
         batch_size = complex_input.shape[0]
-        num_complex_patches = (32 // 1) * (32 // 16)  # 32 * 2 = 64 complex patches
+        num_complex_patches = (32 // 16) * (32 // 1)  # 2 * 32 = 64 complex patches
 
         num_patches = num_complex_patches * 2  # 128 patches (real + imaginary parts)
         expected_keep_complex = int(num_complex_patches * (1 - wimae_model.mask_ratio))
         expected_keep = expected_keep_complex * 2  # Double for real and imaginary parts
         
         assert output["encoded_features"].shape == (batch_size, expected_keep, wimae_model.encoder_dim)
-        assert output["reconstructed_patches"].shape == (batch_size, num_patches, 16)  # 1x16 patch
+        assert output["reconstructed_patches"].shape == (batch_size, num_patches, 16)  # 16x1 patch
     
     def test_wimae_encode(self, wimae_model, complex_input):
         """Test WiMAE encode method."""
@@ -78,21 +78,25 @@ class TestWiMAEModel:
         
         # Check output shape
         batch_size = complex_input.shape[0]
-        num_complex_patches = (32 // 1) * (32 // 16)  # 32 * 2 = 64 complex patches
+        num_complex_patches = (32 // 16) * (32 // 1)  # 2 * 32 = 64 complex patches
         num_patches = num_complex_patches * 2  # 128 patches (real + imaginary parts)
         
         assert encoded_features.shape == (batch_size, num_patches, wimae_model.encoder_dim)
     
     def test_wimae_reconstruct(self, wimae_model, complex_input):
-        """Test WiMAE reconstruct method."""
-        reconstructed = wimae_model.reconstruct(complex_input)
+        """Test WiMAE encode + decode for reconstruction."""
+        # Encode with masking
+        encoded_features, ids_keep, ids_mask = wimae_model.encode(complex_input, apply_mask=True)
+        
+        # Decode to reconstruct
+        reconstructed = wimae_model.decode(encoded_features, ids_keep, ids_mask)
         
         # Check output shape
         batch_size = complex_input.shape[0]
-        num_complex_patches = (32 // 1) * (32 // 16)  # 32 * 2 = 64 complex patches
+        num_complex_patches = (32 // 16) * (32 // 1)  # 2 * 32 = 64 complex patches
         num_patches = num_complex_patches * 2  # 128 patches (real + imaginary parts)
         
-        assert reconstructed.shape == (batch_size, num_patches, 16)  # 1x16 patch
+        assert reconstructed.shape == (batch_size, num_patches, 16)  # 16x1 patch
     
     def test_wimae_get_embeddings(self, wimae_model, complex_input):
         """Test WiMAE get_embeddings method."""
@@ -152,7 +156,7 @@ class TestContraWiMAEModel:
     def contramae_model(self):
         """Create a ContraWiMAE model for testing."""
         return ContraWiMAE(
-            patch_size=(1, 16),
+            patch_size=(16, 1),
             encoder_dim=64,
             encoder_layers=12,
             encoder_nhead=16,
@@ -177,7 +181,7 @@ class TestContraWiMAEModel:
     
     def test_contramae_model_creation(self, contramae_model):
         """Test ContraWiMAE model creation."""
-        assert contramae_model.patch_size == (1, 16)
+        assert contramae_model.patch_size == (16, 1)
         assert contramae_model.encoder_dim == 64
         assert contramae_model.mask_ratio == 0.6
         assert contramae_model.temperature == 0.1
@@ -329,11 +333,11 @@ class TestDataIntegration:
     def test_model_with_optimized_dataset(self, temp_npz_files):
         """Test model with OptimizedPreloadedDataset."""
         # Create dataset
-        dataset = OptimizedPreloadedDataset(temp_npz_files, normalize=False)
+        dataset = OptimizedPreloadedDataset(temp_npz_files)
         
         # Create model
         model = WiMAE(
-            patch_size=(1, 16),
+            patch_size=(16, 1),
             encoder_dim=64,
             encoder_layers=12,
             encoder_nhead=16,

@@ -19,13 +19,25 @@ This notebook demonstrates:
 ### Train WiMAE
 
 ```bash
-python wimae/training/train_wimae.py configs/default_training.yaml
+python contrawimae/training/train_wimae.py configs/default_training.yaml
 ```
 
 ### Train ContraWiMAE
 
-```bash
-python wimae/training/train_contramae.py configs/default_training.yaml
+```python
+import yaml
+from contrawimae.training.train_contramae import ContraWiMAETrainer
+
+# Load configuration
+with open("configs/default_training.yaml", "r") as f:
+    config = yaml.safe_load(f)
+
+# Set model type to contrawimae
+config["model"]["type"] = "contrawimae"
+
+# Create and train
+trainer = ContraWiMAETrainer(config)
+trainer.train()
 ```
 
 ## Programmatic Usage
@@ -34,7 +46,7 @@ python wimae/training/train_contramae.py configs/default_training.yaml
 
 ```python
 import yaml
-from wimae.training.train_wimae import WiMAETrainer
+from contrawimae.training.train_wimae import WiMAETrainer
 
 # Load and modify config
 with open("configs/default_training.yaml", "r") as f:
@@ -53,7 +65,7 @@ results = trainer.train()
 ### Model Inference
 
 ```python
-from wimae.models import WiMAE
+from contrawimae.models import WiMAE
 import torch
 
 # Load trained model
@@ -64,14 +76,15 @@ model.eval()
 with torch.no_grad():
     embeddings = model.encode(channel_data)
     
-# Reconstruct data
+# Reconstruct data (encode with masking, then decode)
 with torch.no_grad():
-    reconstructed = model.reconstruct(channel_data)
+    encoded_features, ids_keep, ids_mask = model.encode(channel_data, apply_mask=True)
+    reconstructed = model.decode(encoded_features, ids_keep, ids_mask)
 ```
 
 ## More Examples
 
 For complete examples and tutorials, see:
 - `examples/training_demo.ipynb`: Complete training workflow
-- Source code in `wimae/` for implementation details
+- Source code in `contrawimae/` for implementation details
 - Test files in `tests/` for usage patterns 

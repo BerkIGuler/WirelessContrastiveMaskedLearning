@@ -3,7 +3,7 @@ Data Utilities
 
 The data utilities module provides dataset classes and preprocessing functions.
 
-.. currentmodule:: wimae.training.data_utils
+.. currentmodule:: contrawimae.training.data_utils
 
 Dataset Classes
 ---------------

@@ -18,7 +18,7 @@ The package uses YAML configuration files with the following main sections:
 ```yaml
 model:
   type: "wimae"
-  patch_size: [1, 16]
+  patch_size: [16, 1]
   encoder_dim: 64
 
 data:
@@ -57,9 +57,8 @@ config["data"]["debug_size"] = 1000  # For testing
 
 ## Configuration Files
 
-The package includes several pre-configured files:
+The package includes a pre-configured config file:
 
 - `configs/default_training.yaml`: Complete training setup
-- `configs/scenario_split_simple.yaml`: Data splitting by scenarios
 
 See the main [README](../README.md#configuration-options) for detailed parameter descriptions and optimal settings. 

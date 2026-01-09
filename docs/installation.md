@@ -27,9 +27,9 @@ For complete installation instructions and requirements, see the main [README](.
 Test your installation:
 
 ```python
-import wimae
-from wimae.models import WiMAE, ContraWiMAE
+import contrawimae
+from contrawimae.models import WiMAE, ContraWiMAE
 
-print(f"WiMAE version: {wimae.__version__}")
+print(f"ContraWiMAE version: {contrawimae.__version__}")
 print("Installation successful!")
 ``` 

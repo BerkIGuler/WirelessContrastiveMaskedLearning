@@ -4,8 +4,8 @@
 
 ```python
 import yaml
-from wimae.models import WiMAE
-from wimae.training.train_wimae import WiMAETrainer
+from contrawimae.models import WiMAE
+from contrawimae.training.train_wimae import WiMAETrainer
 
 # Load configuration
 with open("configs/default_training.yaml", "r") as f:
@@ -19,10 +19,10 @@ trainer.train()
 ## Basic ContraWiMAE Usage
 
 ```python
-from wimae.training.train_contramae import ContraWiMAETrainer
+from contrawimae.training.train_contramae import ContraWiMAETrainer
 
 # Use same config, but change model type
-config["model"]["type"] = "contramae"
+config["model"]["type"] = "contrawimae"
 
 trainer = ContraWiMAETrainer(config)
 trainer.train()

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Automated documentation builder for WiMAE package.
+Automated documentation builder for ContraWiMAE package.
 
 This script automatically generates API documentation from code docstrings
 and builds the complete documentation site.
@@ -114,7 +114,7 @@ def main():
     """Main script entry point."""
     import argparse
     
-    parser = argparse.ArgumentParser(description="Build WiMAE documentation")
+    parser = argparse.ArgumentParser(description="Build ContraWiMAE documentation")
     parser.add_argument("--clean", action="store_true", help="Clean build artifacts")
     parser.add_argument("--install", action="store_true", help="Install dependencies")
     parser.add_argument("--check", action="store_true", help="Check docstring quality")
@@ -126,7 +126,7 @@ def main():
     if not any(vars(args).values()):
         args.all = True  # Default to full build
     
-    print("WiMAE Documentation Builder")
+    print("ContraWiMAE Documentation Builder")
     print("=" * 40)
     
     if args.clean or args.all:

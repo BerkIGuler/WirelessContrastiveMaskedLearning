@@ -7,7 +7,7 @@ import numpy as np
 
 
 class Patcher:
-    def __init__(self, patch_size=(1, 16)):
+    def __init__(self, patch_size=(16, 1)):
         """
         Initialize the patcher with patch dimensions.
 
@@ -71,7 +71,7 @@ class Patcher:
 
 
 class InversePatcher:
-    def __init__(self, original_shape, patch_size=(1, 16)):
+    def __init__(self, original_shape, patch_size=(16, 1)):
         """
         Initialize the inverse patcher.
 

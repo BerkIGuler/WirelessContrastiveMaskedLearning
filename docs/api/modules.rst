@@ -3,7 +3,7 @@ Model Modules
 
 The modules package contains individual components used to build WiMAE and ContraWiMAE models.
 
-.. currentmodule:: wimae.models.modules
+.. currentmodule:: contrawimae.models.modules
 
 Core Components
 ---------------

@@ -21,10 +21,10 @@ class Encoder(nn.Module):
     def __init__(
         self,
         input_dim: int,
-        d_model: int = 256,
+        d_model: int = 64,
         nhead: int = 16,
         activation: str = "gelu",
-        mask_ratio: float = 0.6,
+        mask_ratio: float = 0.9,
         dropout: float = 0.1,
         num_layers: int = 12,
         max_len: int = 128,
