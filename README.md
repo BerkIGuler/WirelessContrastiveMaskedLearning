@@ -27,8 +27,18 @@ We propose a transformer-based foundation model designed specifically for wirele
 ```bash
 git clone https://github.com/BerkIGuler/WirelessContrastiveMaskedLearning.git
 cd WirelessContrastiveMaskedLearning
+
+# Install Git LFS (required for downloading data files)
+git lfs install
+
+# Pull data files (managed with Git LFS)
+git lfs pull
+
+# Install the package
 pip install -e .
 ```
+
+**Note**: The repository uses [Git LFS](https://git-lfs.github.com/) to manage data files. Make sure to install Git LFS and run `git lfs pull` to download the sample data files.
 
 ### Installation Options
 
@@ -105,6 +115,7 @@ Each NPZ file should contain a `'channels'` key with complex-valued channel matr
 - `N`: Number of channel realizations  
 - `H, W`: Spatial dimensions (e.g., antennas, subcarriers)
 
+**Note on Repository Data**: The data files in the `data/` folder are managed using [Git LFS](https://git-lfs.github.com/) and contain only a simple sample dataset for demonstration purposes. For the complete dataset used in the paper, please send an email.
 
 ### 2. Configure Training
 

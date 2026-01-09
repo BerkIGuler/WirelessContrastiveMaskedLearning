@@ -2,13 +2,30 @@
 data/
 checkpoints/
 
-# do not ignore 
+# do not ignore .gitkeep files
 !data/.gitkeep
 !data/test/.gitkeep
+!data/test/mmwave/.gitkeep
+!data/test/sub6/.gitkeep
 !data/pretrain/.gitkeep
 !checkpoints/.gitkeep
 !checkpoints/wimae/.gitkeep
 !checkpoints/contrawimae/.gitkeep
+
+# un-ignore parent directories for sample data files
+!data/pretrain/
+!data/test/
+!data/test/mmwave/
+!data/test/sub6/
+
+# do not ignore sample data files (managed with Git LFS)
+!data/pretrain/boston5g_3p5_bs000.npz
+!data/pretrain/city_44_lisboa_3p5_bs000.npz
+!data/pretrain/city_5_philadelphia_3p5_bs001.npz
+!data/pretrain/city_50_edinburgh_3p5_bs000.npz
+!data/pretrain/city_66_bruxelles_3p5_bs000.npz
+!data/test/mmwave/city_13_columbus_28_bs000.npz
+!data/test/sub6/city_13_columbus_3p5_bs000.npz
 
 
 # Byte-compiled / optimized / DLL files
@@ -154,6 +171,15 @@ results/
 *.npy
 *.pkl
 *.pickle
+
+# exceptions: sample data files (managed with Git LFS) - must come after *.npz
+!data/pretrain/boston5g_3p5_bs000.npz
+!data/pretrain/city_44_lisboa_3p5_bs000.npz
+!data/pretrain/city_5_philadelphia_3p5_bs001.npz
+!data/pretrain/city_50_edinburgh_3p5_bs000.npz
+!data/pretrain/city_66_bruxelles_3p5_bs000.npz
+!data/test/mmwave/city_13_columbus_28_bs000.npz
+!data/test/sub6/city_13_columbus_3p5_bs000.npz
 
 # IDE
 .vscode/
