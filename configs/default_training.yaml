@@ -9,11 +9,11 @@ model:
   encoder_nhead: 16
   decoder_layers: 4
   decoder_nhead: 8
-  mask_ratio: 0.6
+  mask_ratio: 0.9
   contrastive_dim: 64
-  temperature: 0.1
-  snr_min: 0.0
-  snr_max: 30.0
+  temperature: 0.2
+  snr_min: 5.0
+  snr_max: 40.0
 
 # Data configuration
 data:
@@ -22,7 +22,7 @@ data:
   
   # Normalization settings
   normalize: true
-  val_split: 0.2
+  val_split: 0.1
   debug_size: null  # Set to a number for debugging (e.g., 1000)
   
   # Statistics handling options:
@@ -55,7 +55,7 @@ data:
 # Training configuration
 training:
   batch_size: 64
-  epochs: 3000
+  epochs: 100
   num_workers: 4
   device: "cuda:0"
   

@@ -54,7 +54,7 @@ pip install -r requirements.txt
 
 ### Dependencies
 
-The package has minimal core dependencies (7 packages) with optional extras for documentation and development.
+The package has minimal core dependencies with optional extras for documentation and development.
 
 ## Repository Structure
 
@@ -66,8 +66,8 @@ WirelessContrastiveMaskedLearning/
 │   └── training_demo.ipynb     # Training demonstration
 ├── contrawimae/               # Main package
 │   ├── models/                 # Model implementations
-│   │   ├── base.py            # WiMAE base model
-│   │   ├── contramae.py       # ContraWiMAE model
+│   │   ├── wimae.py           # WiMAE model
+│   │   ├── contrawimae.py     # ContraWiMAE model
 │   │   └── modules/           # Model components
 │   │       ├── encoder.py     # Transformer encoder
 │   │       ├── decoder.py     # Transformer decoder
@@ -108,34 +108,14 @@ Each NPZ file should contain a `'channels'` key with complex-valued channel matr
 
 ### 2. Configure Training
 
-Edit the configuration file or use the default:
-
-```yaml
-# configs/default_training.yaml
-model:
-  type: "wimae"  # or "contramae"
-  patch_size: [16, 1]
-  encoder_dim: 64
-  encoder_layers: 12
-  mask_ratio: 0.6
-
-data:
-  data_dir: "data/pretrain"
-  normalize: true
-  val_split: 0.2
-
-training:
-  batch_size: 64
-  epochs: 100
-  device: "cuda:0"
-```
+Edit the configuration file or use the [default configuration](configs/default_training.yaml):
 
 ### 3. Train Models
 
 #### Train WiMAE (Base Model)
 
 ```python
-from contrawimae.training import WiMAETrainer
+from contrawimae.training.train_wimae import WiMAETrainer
 import yaml
 
 # Load configuration
@@ -152,7 +132,7 @@ trainer.train()
 #### Train ContraWiMAE (With Contrastive Learning)
 
 ```python
-from contrawimae.training import ContraWiMAETrainer
+from contrawimae.training.train_contramae import ContraWiMAETrainer
 import yaml
 
 # Load configuration
@@ -229,10 +209,10 @@ model:
                                    # - Must divide encoder_dim evenly
   
   # Masking Strategy
-  mask_ratio: 0.6                 # Fraction of patches to mask (0.0-0.9)
-                                   # - 0.6 is optimal from paper experiments
+  mask_ratio: 0.9                 # Fraction of patches to mask (0.0-0.9)
                                    # - Higher ratios force better representations
-                                   # - Too high (>0.8) makes task too difficult
+                                   # - Too high (>0.95) makes task too difficult
+                                   # - Default: 0.9 for strong pretraining
   
   # ContraWiMAE Specific Parameters
   contrastive_dim: 64             # Contrastive projection dimension
@@ -240,14 +220,14 @@ model:
                                    # - Usually same as encoder_dim
                                    # - Affects contrastive learning quality
   
-  temperature: 0.1                # Contrastive loss temperature
+  temperature: 0.2                # Contrastive loss temperature
                                    # - Controls hardness of negative sampling
-                                   # - Lower values (0.05-0.1) = harder negatives
+                                   # - Lower values (0.1-0.2) = harder negatives
                                    # - Higher values (0.3-0.5) = softer training
   
   # Augmentation Parameters (ContraWiMAE)
-  snr_min: 0.0                    # Minimum SNR for noise injection (dB)
-  snr_max: 30.0                   # Maximum SNR for noise injection (dB)
+  snr_min: 5.0                    # Minimum SNR for noise injection (dB)
+  snr_max: 40.0                   # Maximum SNR for noise injection (dB)
                                    # - Controls noise level for positive pairs
                                    # - Wider range = more diverse augmentations
 ```
@@ -267,9 +247,9 @@ data:
                                    # - Essential for stable training
                                    # - Uses complex-valued statistics
   
-  val_split: 0.2                  # Validation split ratio (0.0-0.5)
+  val_split: 0.1                  # Validation split ratio (0.0-0.5)
                                    # - Fraction of data for validation
-                                   # - 0.2 = 80% train, 20% validation
+                                   # - 0.1 = 90% train, 10% validation
                                    # - Applied after all data loading
   
   debug_size: null                # Limit dataset size for debugging
@@ -313,9 +293,9 @@ training:
                                    # - Larger batches (128, 256) for better gradients
                                    # - Smaller batches (32, 64) for limited memory
   
-  epochs: 3000                    # Number of training epochs
+  epochs: 100                      # Number of training epochs
+                                   # - Default: 100 for quick experimentation
                                    # - Paper uses 3000 for full pretraining
-                                   # - Can start with 100-500 for experimentation
                                    # - Early stopping prevents overfitting
   
   num_workers: 4                  # Number of data loading workers
@@ -340,9 +320,9 @@ training:
                                    # - Lower (1e-4) for fine-tuning
                                    # - Higher (1e-3) for quick experiments
     
-    weight_decay: 0.0             # L2 regularization strength
+    weight_decay: 0.001            # L2 regularization strength
                                    # - 0.0: No regularization
-                                   # - 0.01-0.1: Standard regularization
+                                   # - 0.001-0.01: Standard regularization
                                    # - Prevents overfitting
     
     betas: [0.9, 0.999]          # Adam momentum parameters
@@ -362,8 +342,9 @@ training:
     
     # Cosine scheduler parameters
     T_max: 3000                   # Maximum epochs for cosine cycle
-                                   # - Should match training epochs
-                                   # - Full cosine cycle over training
+                                   # - Can be set to full training cycle (e.g., 3000)
+                                   # - Works with early stopping (actual epochs may be less)
+                                   # - Full cosine cycle over T_max epochs
     
     eta_min: 0.000003            # Minimum learning rate
                                    # - Learning rate at end of cycle
@@ -395,12 +376,12 @@ training:
                                    # - 1.0-5.0: Standard values
   
   # Early Stopping
-  patience: 20                    # Epochs to wait for improvement
+  patience: 5                     # Epochs to wait for improvement
                                    # - Training stops if no improvement
                                    # - Prevents overfitting
-                                   # - 10-50 epochs typical
+                                   # - 5-20 epochs typical
   
-  min_delta: 0.001               # Minimum improvement threshold
+  min_delta: 0.0001              # Minimum improvement threshold
                                    # - Smaller improvements ignored
                                    # - Prevents stopping on noise
   
