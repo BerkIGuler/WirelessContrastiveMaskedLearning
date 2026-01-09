@@ -172,8 +172,8 @@ class TestDataLoading:
     
     def test_calculate_complex_statistics(self, temp_npz_files):
         """Test complex statistics calculation."""
-        # Create a small dataset for testing
-        dataset = OptimizedPreloadedDataset(temp_npz_files[:1], normalize=False)
+        # Create a small dataset for testing (without normalization)
+        dataset = OptimizedPreloadedDataset(temp_npz_files[:1], statistics=None)
         dataloader = create_efficient_dataloader(dataset, batch_size=5, shuffle=False)
         
         # Calculate statistics
