@@ -1,0 +1,2 @@
+data/test/**/*.npz filter=lfs diff=lfs merge=lfs -text
+data/pretrain/*.npz filter=lfs diff=lfs merge=lfs -text
