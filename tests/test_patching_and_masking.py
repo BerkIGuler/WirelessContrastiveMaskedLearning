@@ -16,7 +16,7 @@ class TestPatching:
     @pytest.fixture
     def patcher_1x16(self):
         """Create a 1x16 patcher."""
-        return Patcher(patch_size=(1, 16))
+        return Patcher(patch_size=(16, 1))
     
     @pytest.fixture
     def patcher_2x8(self):
@@ -34,8 +34,8 @@ class TestPatching:
     
     def test_patcher_initialization(self):
         """Test patcher initialization."""
-        patcher = Patcher(patch_size=(1, 16))
-        assert patcher.patch_size == (1, 16)
+        patcher = Patcher(patch_size=(16, 1))
+        assert patcher.patch_size == (16, 1)
         
         patcher = Patcher(patch_size=(2, 8))
         assert patcher.patch_size == (2, 8)
@@ -46,8 +46,8 @@ class TestPatching:
         
         # Check output shape
         batch_size = complex_input.shape[0]
-        expected_patches = (32 // 1) * (32 // 16)  # 32 * 2 = 64 patches
-        expected_dim = 1 * 16  # patch size
+        expected_patches = (32 // 16) * (32 // 1)  # 2 * 32 = 64 patches
+        expected_dim = 16 * 1  # patch size
         
         assert patches.shape == (batch_size, 2 * expected_patches, expected_dim)
         assert patches.dtype == torch.float32  # Should be flattened to real
@@ -58,8 +58,8 @@ class TestPatching:
         imag_patches = patches[:, expected_patches:, :]
         
         # Verify that patches are properly extracted
-        assert torch.allclose(real_patches[0, 0, :], complex_input[0, :1, :16].real.flatten())
-        assert torch.allclose(imag_patches[0, 0, :], complex_input[0, :1, :16].imag.flatten())
+        assert torch.allclose(real_patches[0, 0, :], complex_input[0, :16, :1].real.flatten())
+        assert torch.allclose(imag_patches[0, 0, :], complex_input[0, :16, :1].imag.flatten())
     
     def test_patcher_different_patch_sizes(self, complex_input):
         """Test patching with different patch sizes."""
@@ -91,7 +91,7 @@ class TestPatching:
         imag = torch.randn(batch_size, height, width)
         complex_input = torch.complex(real, imag)
         
-        patcher = Patcher(patch_size=(1, 16))
+        patcher = Patcher(patch_size=(16, 1))
         
         # Should raise an error or handle gracefully
         with pytest.raises(ValueError):
@@ -101,28 +101,28 @@ class TestPatching:
         """Test patching with edge cases."""
         # Test with patch size equal to input size
         batch_size = 4
-        height, width = 1, 16
+        height, width = 16, 1
         real = torch.randn(batch_size, height, width)
         imag = torch.randn(batch_size, height, width)
         complex_input = torch.complex(real, imag)
         
-        patcher = Patcher(patch_size=(1, 16))
+        patcher = Patcher(patch_size=(16, 1))
         patches = patcher(complex_input)
         
         # Should have 1 patch per sample
-        assert patches.shape == (batch_size, 2, 16)  # 2 for real+imag, 16 for 1x16
+        assert patches.shape == (batch_size, 2, 16)  # 2 for real+imag, 16 for 16x1
     
     def test_patcher_preserves_data(self, patcher_1x16, complex_input):
         """Test that patching preserves the original data."""
         patches = patcher_1x16(complex_input)
         
         # Reconstruct the first patch manually
-        first_patch_real = patches[0, 0, :].reshape(1, 16)
-        first_patch_imag = patches[0, 64, :].reshape(1, 16)  # 64 is the number of patches
+        first_patch_real = patches[0, 0, :].reshape(16, 1)
+        first_patch_imag = patches[0, 64, :].reshape(16, 1)  # 64 is the number of patches
         first_patch_complex = torch.complex(first_patch_real, first_patch_imag)
         
         # Should match the original data
-        original_patch = complex_input[0, :1, :16]
+        original_patch = complex_input[0, :16, :1]
         assert torch.allclose(first_patch_complex, original_patch, atol=1e-6)
 
 

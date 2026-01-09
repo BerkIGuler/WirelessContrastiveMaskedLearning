@@ -20,7 +20,7 @@ class Decoder(nn.Module):
     def __init__(
         self,
         output_dim: int,
-        d_model: int = 256,
+        d_model: int = 64,
         nhead: int = 8,
         activation: str = "gelu",
         dropout: float = 0.1,
@@ -36,9 +36,9 @@ class Decoder(nn.Module):
             output_dim: Output dimension (patch dimension)
             d_model: Model dimension
             nhead: Number of attention heads
-            activation: Activation function
-            dropout: Dropout probability
-            num_layers: Number of transformer layers
+            activation: Activation function for MLP
+            dropout: Dropout probability for MLP
+            num_layers: Number of transformer layers for decoder
             max_len: Maximum sequence length
             pos_encoding_type: Type of positional encoding ("learnable" or "sinusoidal")
             device: Device to place the model on

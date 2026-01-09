@@ -3,15 +3,20 @@ Base trainer class for WiMAE and ContraWiMAE models.
 """
 
 import os
+import logging
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import yaml
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, Optional, Tuple, List
+from typing import Dict, Any, Optional, Tuple
 from torch.utils.data import DataLoader, Dataset, random_split
-from tqdm import tqdm
+
+try:
+    from torch.utils.tensorboard import SummaryWriter
+except ImportError:
+    SummaryWriter = None
 
 from ..models.base import WiMAE
 from ..models.contramae import ContraWiMAE
@@ -53,7 +58,7 @@ class BaseTrainer:
         
         # Setup logging
         self.setup_logging()
-        
+    
     def setup_logging(self):
         """
         Setup logging and tensorboard writer.
@@ -72,17 +77,40 @@ class BaseTrainer:
         
         self.log_dir.mkdir(parents=True, exist_ok=True)
         
+        # Setup logger
+        self.logger = logging.getLogger(f"{__name__}.{model_type}")
+        self.logger.setLevel(logging.INFO)
+        
+        # Remove existing handlers to avoid duplicates
+        self.logger.handlers.clear()
+        
+        # File handler
+        log_file = self.log_dir / "training.log"
+        file_handler = logging.FileHandler(log_file)
+        file_handler.setLevel(logging.INFO)
+        file_formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        )
+        file_handler.setFormatter(file_formatter)
+        self.logger.addHandler(file_handler)
+        
+        # Console handler
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.INFO)
+        console_formatter = logging.Formatter('%(levelname)s - %(message)s')
+        console_handler.setFormatter(console_formatter)
+        self.logger.addHandler(console_handler)
+        
         # Save configuration
         with open(self.log_dir / "config.yaml", "w") as f:
             yaml.dump(self.config, f, default_flow_style=False)
         
         # Setup tensorboard writer if enabled
         if self.config["logging"].get("tensorboard", True):
-            try:
-                from torch.utils.tensorboard import SummaryWriter
+            if SummaryWriter is not None:
                 self.writer = SummaryWriter(str(self.log_dir))
-            except ImportError:
-                print("Warning: tensorboard not available. Install with: pip install tensorboard")
+            else:
+                self.logger.warning("tensorboard not available. Install with: pip install tensorboard")
                 self.writer = None
     
     def setup_model(self) -> nn.Module:
@@ -191,12 +219,12 @@ class BaseTrainer:
             scheduler = optim.lr_scheduler.StepLR(
                 optimizer,
                 step_size=sched_config["step_size"],
-                gamma=sched_config.get("gamma", 0.1)
+                gamma=sched_config.get("gamma", 0.5)
             )
         elif sched_type == "exponential":
             scheduler = optim.lr_scheduler.ExponentialLR(
                 optimizer,
-                gamma=sched_config["gamma"]
+                gamma=sched_config.get("gamma", 0.995)
             )
         else:
             raise ValueError(f"Unknown scheduler type: {sched_type}")
@@ -226,7 +254,7 @@ class BaseTrainer:
         data_config = self.config["data"]
         training_config = self.config["training"]
         normalize = data_config.get("normalize", True)
-        calculate_stats = data_config.get("calculate_statistics", False)
+        calculate_stats = data_config.get("calculate_statistics", True)
         debug_size = data_config.get("debug_size", None)
         
         # Step 1: Setup statistics
@@ -256,70 +284,117 @@ class BaseTrainer:
                 'imag_mean': -0.01027622725814581,
                 'imag_std': 30.70543670654297
             })
-            print(f"Using pre-computed statistics: {statistics}")
+            self.logger.info(f"Using pre-computed statistics: {statistics}")
             return statistics
         return None
     
     def _create_datasets(self, data_config: Dict, normalize: bool, calculate_stats: bool, 
                         statistics: Optional[Dict], debug_size: Optional[int]) -> Tuple[Dataset, Dataset]:
-        """Create initial train and validation datasets."""
+        """
+        Create initial train and validation datasets.
+        
+        Args:
+            data_config: Data configuration dictionary
+            normalize: Whether to normalize the data
+            calculate_stats: Whether to calculate statistics (if False, use provided statistics)
+            statistics: Pre-computed statistics dict (used if normalize=True and calculate_stats=False)
+            debug_size: Optional size limit for debugging (applied before train/val split)
+            
+        Returns:
+            Tuple of (train_dataset, val_dataset)
+        """
+        # Determine statistics parameter for dataset creation
+        stats_param = statistics if (normalize and not calculate_stats) else None
+        
         if "scenario_split_config" in data_config:
-            # Scenario split approach
-            train_dataset = ScenarioSplitDataset(
-                data_dir=data_config["data_dir"],
-                config_path=data_config["scenario_split_config"],
-                split='train',
-                normalize=normalize and not calculate_stats,
-                statistics=statistics
-            )
-            
-            val_dataset = ScenarioSplitDataset(
-                data_dir=data_config["data_dir"],
-                config_path=data_config["scenario_split_config"],
-                split='val',
-                normalize=normalize and not calculate_stats,
-                statistics=statistics
-            )
-            return train_dataset, val_dataset
+            return self._create_scenario_split_datasets(data_config, stats_param, debug_size)
         else:
-            # Simple approach with all NPZ files
-            npz_files = [str(Path(data_config["data_dir"]) / f) 
-                        for f in os.listdir(data_config["data_dir"]) 
-                        if f.endswith('.npz')]
+            return self._create_simple_split_datasets(data_config, stats_param, debug_size)
+    
+    def _create_scenario_split_datasets(self, data_config: Dict, statistics: Optional[Dict], 
+                                       debug_size: Optional[int]) -> Tuple[Dataset, Dataset]:
+        """Create datasets using scenario-based splitting."""
+        scenario_config = data_config["scenario_split_config"]
+        
+        if not isinstance(scenario_config, dict):
+            raise ValueError("scenario_split_config must be a dictionary with train_patterns, val_patterns, and test_patterns")
+        
+        train_dataset = ScenarioSplitDataset(
+            data_dir=data_config["data_dir"],
+            config_dict=scenario_config,
+            split='train',
+            statistics=statistics
+        )
+        
+        val_dataset = ScenarioSplitDataset(
+            data_dir=data_config["data_dir"],
+            config_dict=scenario_config,
+            split='val',
+            statistics=statistics
+        )
+        
+        # Apply debug size to train dataset if specified
+        if debug_size is not None:
+            train_dataset = self._apply_debug_size(train_dataset, debug_size)
+        
+        return train_dataset, val_dataset
+    
+    def _create_simple_split_datasets(self, data_config: Dict, statistics: Optional[Dict], 
+                                     debug_size: Optional[int]) -> Tuple[Dataset, Dataset]:
+        """Create datasets using simple file-based splitting."""
+        data_dir = Path(data_config["data_dir"])
+        npz_files = [str(data_dir / f) for f in os.listdir(data_dir) if f.endswith('.npz')]
+        
+        if not npz_files:
+            raise ValueError(f"No NPZ files found in {data_config['data_dir']}")
+        
+        # Create full dataset
+        dataset = OptimizedPreloadedDataset(
+            npz_files=npz_files,
+            statistics=statistics
+        )
+        
+        # Apply debug size if specified (before train/val split)
+        if debug_size is not None:
+            dataset = self._apply_debug_size(dataset, debug_size)
+        
+        # Split into train and validation
+        val_split = data_config.get("val_split", 0.2)
+        val_size = int(len(dataset) * val_split)
+        train_size = len(dataset) - val_size
+        
+        train_dataset, val_dataset = random_split(
+            dataset,
+            [train_size, val_size],
+            generator=torch.Generator().manual_seed(42)
+        )
+        
+        return train_dataset, val_dataset
+    
+    def _apply_debug_size(self, dataset: Dataset, debug_size: int) -> Dataset:
+        """
+        Apply debug size limit to a dataset.
+        
+        Args:
+            dataset: Dataset to limit
+            debug_size: Maximum number of samples to keep
             
-            if not npz_files:
-                raise ValueError(f"No NPZ files found in {data_config['data_dir']}")
-            
-            # Create full dataset
-            dataset = OptimizedPreloadedDataset(
-                npz_files=npz_files,
-                normalize=normalize and not calculate_stats,
-                statistics=statistics
-            )
-            
-            # Apply debug size if specified
-            if debug_size is not None:
-                dataset, _ = random_split(
-                    dataset, 
-                    [debug_size, len(dataset) - debug_size],
-                    generator=torch.Generator().manual_seed(42)
-                )
-            
-            # Split dataset
-            val_split = data_config.get("val_split", 0.2)
-            val_size = int(len(dataset) * val_split)
-            train_size = len(dataset) - val_size
-            
-            train_dataset, val_dataset = random_split(
-                dataset, 
-                [train_size, val_size],
-                generator=torch.Generator().manual_seed(42)
-            )
-            return train_dataset, val_dataset
+        Returns:
+            Limited dataset (or original if debug_size >= dataset size)
+        """
+        if debug_size >= len(dataset):
+            return dataset
+        
+        limited_dataset, _ = random_split(
+            dataset,
+            [debug_size, len(dataset) - debug_size],
+            generator=torch.Generator().manual_seed(42)
+        )
+        return limited_dataset
     
     def _calculate_statistics(self, train_dataset: Dataset, training_config: Dict) -> Dict:
         """Calculate statistics from training dataset."""
-        print("Computing statistics from training dataset...")
+        self.logger.info("Computing statistics from training dataset...")
         
         # Create temporary dataloader for statistics calculation
         temp_loader = create_efficient_dataloader(
@@ -331,7 +406,7 @@ class BaseTrainer:
         
         # Calculate statistics
         statistics = calculate_complex_statistics(temp_loader)
-        print(f"Calculated statistics: {statistics}")
+        self.logger.info(f"Calculated statistics: {statistics}")
         return statistics
     
     def _create_dataloaders(self, train_dataset: Dataset, val_dataset: Dataset, 
@@ -355,8 +430,8 @@ class BaseTrainer:
             drop_last=False
         )
         
-        print(f"Train samples: {len(train_dataset)}")
-        print(f"Validation samples: {len(val_dataset)}")
+        self.logger.info(f"Train samples: {len(train_dataset)}")
+        self.logger.info(f"Validation samples: {len(val_dataset)}")
         
         return train_loader, val_loader
     
@@ -430,17 +505,17 @@ class BaseTrainer:
             missing_keys, unexpected_keys = self.model.load_state_dict(checkpoint["model_state_dict"], strict=False)
             
             if missing_keys:
-                print(f"Warning: Missing keys in checkpoint (will remain randomly initialized):")
+                self.logger.warning(f"Missing keys in checkpoint (will remain randomly initialized):")
                 for key in missing_keys:
-                    print(f"  - {key}")
+                    self.logger.warning(f"  - {key}")
             
             if unexpected_keys:
-                print(f"Warning: Unexpected keys in checkpoint (will be ignored):")
+                self.logger.warning(f"Unexpected keys in checkpoint (will be ignored):")
                 for key in unexpected_keys:
-                    print(f"  - {key}")
+                    self.logger.warning(f"  - {key}")
             
             if not missing_keys and not unexpected_keys:
-                print("All model weights loaded successfully")
+                self.logger.info("All model weights loaded successfully")
         
         if not model_only:
             # Load optimizer state if available
@@ -459,9 +534,9 @@ class BaseTrainer:
             if "best_val_loss" in checkpoint:
                 self.best_val_loss = checkpoint["best_val_loss"]
             
-            print(f"Loaded full training state from epoch {self.current_epoch}")
+            self.logger.info(f"Loaded full training state from epoch {self.current_epoch}")
         else:
-            print("Loaded model weights only (training state not restored)")
+            self.logger.info("Loaded model weights only (training state not restored)")
     
     def train(self):
         """
@@ -474,10 +549,10 @@ class BaseTrainer:
         epochs = self.config["training"]["epochs"]
         patience = self.config["training"]["patience"]
         
-        print(f"Starting training for {epochs} epochs...")
-        print(f"Model: {self.config['model']['type']}")
-        print(f"Device: {self.device}")
-        print(f"Log directory: {self.log_dir}")
+        self.logger.info(f"Starting training for {epochs} epochs...")
+        self.logger.info(f"Model: {self.config['model']['type']}")
+        self.logger.info(f"Device: {self.device}")
+        self.logger.info(f"Log directory: {self.log_dir}")
         
         for epoch in range(self.current_epoch, epochs):
             self.current_epoch = epoch
@@ -493,10 +568,7 @@ class BaseTrainer:
             
             # Learning rate scheduling
             if self.scheduler:
-                if isinstance(self.scheduler, optim.lr_scheduler.ReduceLROnPlateau):
-                    self.scheduler.step(val_metrics["val_loss"])
-                else:
-                    self.scheduler.step()
+                self.scheduler.step()
             
             # Checkpointing and early stopping
             min_delta = self.config["training"]["min_delta"]
@@ -515,10 +587,10 @@ class BaseTrainer:
             
             # Early stopping
             if self.patience_counter >= patience:
-                print(f"Early stopping after {patience} epochs without improvement")
+                self.logger.info(f"Early stopping after {patience} epochs without improvement")
                 break
         
-        print("Training completed!")
+        self.logger.info("Training completed!")
     
     def log_metrics(self, train_metrics: Dict[str, float], val_metrics: Dict[str, float], epoch: int):
         """
@@ -529,32 +601,16 @@ class BaseTrainer:
             val_metrics: Validation metrics
             epoch: Current epoch
         """
-        # Print metrics
-        print(f"Epoch {epoch}:")
+        # Log metrics
+        self.logger.info(f"Epoch {epoch}:")
         for key, value in train_metrics.items():
-            print(f"  {key}: {value:.4f}")
+            self.logger.info(f"  {key}: {value:.4f}")
         for key, value in val_metrics.items():
-            print(f"  {key}: {value:.4f}")
+            self.logger.info(f"  {key}: {value:.4f}")
         
         # Log to tensorboard
         if self.writer:
             for key, value in train_metrics.items():
                 self.writer.add_scalar(f"train/{key}", value, epoch)
             for key, value in val_metrics.items():
-                self.writer.add_scalar(f"val/{key}", value, epoch)
-    
-    @classmethod
-    def from_config(cls, config_path: str) -> "BaseTrainer":
-        """
-        Create trainer from configuration file.
-        
-        Args:
-            config_path: Path to configuration file
-            
-        Returns:
-            Initialized trainer
-        """
-        with open(config_path, "r") as f:
-            config = yaml.safe_load(f)
-        
-        return cls(config) 
+                self.writer.add_scalar(f"val/{key}", value, epoch) 

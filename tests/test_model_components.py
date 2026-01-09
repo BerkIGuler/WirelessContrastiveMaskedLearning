@@ -19,7 +19,7 @@ class TestEncoder:
     def encoder(self):
         """Create an encoder for testing."""
         return Encoder(
-            input_dim=16,  # 1x16 patch
+            input_dim=16,  # 16x1 patch
             d_model=64,
             nhead=16,
             num_layers=12,
@@ -33,7 +33,7 @@ class TestEncoder:
         batch_size = 4
         num_complex_patches = 64  # 32x2 complex patches
         num_patches = num_complex_patches * 2  # 128 patches (real + imaginary parts)
-        patch_dim = 16    # 1x16 patch
+        patch_dim = 16    # 16x1 patch
         return torch.randn(batch_size, num_patches, patch_dim)
     
     def test_encoder_initialization(self, encoder):
@@ -127,7 +127,7 @@ class TestDecoder:
             d_model=64,
             nhead=8,
             num_layers=4,
-            output_dim=16,  # 1x16 patch
+            output_dim=16,  # 16x1 patch
             device="cpu"
         )
     
@@ -202,7 +202,7 @@ class TestWiMAE:
     def wimae_model(self):
         """Create a WiMAE model for testing."""
         return WiMAE(
-            patch_size=(1, 16),
+            patch_size=(16, 1),
             encoder_dim=64,
             encoder_layers=12,
             encoder_nhead=16,
@@ -223,7 +223,7 @@ class TestWiMAE:
     
     def test_wimae_initialization(self, wimae_model):
         """Test WiMAE model initialization."""
-        assert wimae_model.patch_size == (1, 16)
+        assert wimae_model.patch_size == (16, 1)
         assert wimae_model.encoder_dim == 64
         assert wimae_model.mask_ratio == 0.6
         assert str(wimae_model.device) == "cpu"
@@ -245,13 +245,13 @@ class TestWiMAE:
         
         # Check shapes
         batch_size = complex_input.shape[0]
-        num_complex_patches = (32 // 1) * (32 // 16)  # 32 * 2 = 64 complex patches
+        num_complex_patches = (32 // 16) * (32 // 1)  # 2 * 32 = 64 complex patches
         num_patches = num_complex_patches * 2  # 128 patches (real + imaginary parts)
         expected_keep_complex = int(num_complex_patches * (1 - wimae_model.mask_ratio))
         expected_keep = expected_keep_complex * 2  # Double for real and imaginary parts
         
         assert output["encoded_features"].shape == (batch_size, expected_keep, wimae_model.encoder_dim)
-        assert output["reconstructed_patches"].shape == (batch_size, num_patches, 16)  # 1x16 patch
+        assert output["reconstructed_patches"].shape == (batch_size, num_patches, 16)  # 16x1 patch
     
     def test_wimae_forward_without_reconstruction(self, wimae_model, complex_input):
         """Test WiMAE forward pass without reconstruction."""
@@ -269,7 +269,7 @@ class TestWiMAE:
         
         # Check output shape
         batch_size = complex_input.shape[0]
-        num_complex_patches = (32 // 1) * (32 // 16)  # 32 * 2 = 64 complex patches
+        num_complex_patches = (32 // 16) * (32 // 1)  # 2 * 32 = 64 complex patches
         num_patches = num_complex_patches * 2  # 128 patches (real + imaginary parts)
         
         assert encoded_features.shape == (batch_size, num_patches, wimae_model.encoder_dim)
@@ -284,10 +284,10 @@ class TestWiMAE:
         
         # Check output shape
         batch_size = complex_input.shape[0]
-        num_complex_patches = (32 // 1) * (32 // 16)  # 32 * 2 = 64 complex patches
+        num_complex_patches = (32 // 16) * (32 // 1)  # 2 * 32 = 64 complex patches
         num_patches = num_complex_patches * 2  # 128 patches (real + imaginary parts)
         
-        assert reconstructed.shape == (batch_size, num_patches, 16)  # 1x16 patch
+        assert reconstructed.shape == (batch_size, num_patches, 16)  # 16x1 patch
     
     def test_wimae_get_embeddings(self, wimae_model, complex_input):
         """Test WiMAE get_embeddings method."""
@@ -355,7 +355,7 @@ class TestContraWiMAE:
     def contramae_model(self):
         """Create a ContraWiMAE model for testing."""
         return ContraWiMAE(
-            patch_size=(1, 16),
+            patch_size=(16, 1),
             encoder_dim=64,
             encoder_layers=12,
             encoder_nhead=16,
@@ -380,7 +380,7 @@ class TestContraWiMAE:
     
     def test_contramae_initialization(self, contramae_model):
         """Test ContraWiMAE model initialization."""
-        assert contramae_model.patch_size == (1, 16)
+        assert contramae_model.patch_size == (16, 1)
         assert contramae_model.encoder_dim == 64
         assert contramae_model.mask_ratio == 0.6
         assert contramae_model.temperature == 0.1

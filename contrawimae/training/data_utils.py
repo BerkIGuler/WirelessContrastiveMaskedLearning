@@ -2,15 +2,18 @@
 Data utilities for WiMAE training pipeline.
 """
 
+import logging
 import torch
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
 import os
 import gc
-import yaml
 import re
 from pathlib import Path
 from typing import List, Dict, Optional
+
+# Setup module-level logger
+logger = logging.getLogger(__name__)
 
 
 def create_efficient_dataloader(dataset: Dataset, batch_size: int = 1024, 
@@ -127,27 +130,20 @@ class ScenarioSplitDataset(Dataset):
     Allows for controlled train/validation split based on scenario groups.
     """
 
-    def __init__(self, data_dir: str, config_path: str, split: str = 'train', 
-                 normalize: bool = False, statistics: Optional[Dict[str, float]] = None):
+    def __init__(self, data_dir: str, config_dict: Dict, split: str = 'train', 
+                 statistics: Optional[Dict[str, float]] = None):
         """
         Args:
             data_dir: Directory containing the NPZ files
-            config_path: Path to the YAML config file with scenario split definitions
-            split: Either 'train' or 'val'
-            normalize: Whether to normalize the data
-            statistics: Dict with normalization parameters
+            config_dict: Dictionary with scenario split patterns (train_patterns, val_patterns, test_patterns)
+            split: Either 'train', 'val', or 'test'
+            statistics: Dict with normalization parameters. If provided, data will be normalized.
         """
         self.data_dir = data_dir
         self.split = split
-        self.normalize = normalize
         self.statistics = statistics
-
-        if self.normalize and statistics is None:
-            raise ValueError("If normalize is True, statistics must be provided")
-
-        # Load config file
-        with open(config_path, 'r') as f:
-            self.config = yaml.safe_load(f)
+        self.normalize = statistics is not None
+        self.config = config_dict
 
         # Get the appropriate file patterns for the requested split
         if split not in ['train', 'val', 'test']:
@@ -166,7 +162,7 @@ class ScenarioSplitDataset(Dataset):
         if not self.npz_files:
             raise ValueError(f"No files found for {split} split with the provided patterns")
 
-        print(f"Selected {len(self.npz_files)} files for {split} split")
+        logger.info(f"Selected {len(self.npz_files)} files for {split} split")
 
         # First get total sample count and dimensions
         total_samples = 0
@@ -178,7 +174,7 @@ class ScenarioSplitDataset(Dataset):
                     sample_shape = data['channels'][0, 0, :, :].shape
                     self.M, self.N = sample_shape
 
-        print(f"Total samples for {split}: {total_samples}, dimensions: {self.M}x{self.N}")
+        logger.info(f"Total samples for {split}: {total_samples}, dimensions: {self.M}x{self.N}")
 
         # Pre-allocate a single contiguous tensor for all data
         # Using complex64 instead of complex128 to reduce memory usage
@@ -190,7 +186,7 @@ class ScenarioSplitDataset(Dataset):
         # Load all data with progress tracking
         idx = 0
         for file_idx, npz_file in enumerate(self.npz_files):
-            print(f"Loading file {file_idx + 1}/{len(self.npz_files)}: {os.path.basename(npz_file)}")
+            logger.info(f"Loading file {file_idx + 1}/{len(self.npz_files)}: {os.path.basename(npz_file)}")
             with np.load(npz_file) as data:
                 file_samples = len(data['channels'])
 
@@ -205,10 +201,10 @@ class ScenarioSplitDataset(Dataset):
                         data['channels'][batch_start:batch_end, 0, :, :].copy()
                     ).to(torch.complex64)
 
-                    # Apply normalization if needed
+                    # Apply normalization if statistics are provided
                     if self.normalize:
-                        real_part = (batch_data.real - statistics['real_mean']) / statistics['real_std']
-                        imag_part = (batch_data.imag - statistics['imag_mean']) / statistics['imag_std']
+                        real_part = (batch_data.real - self.statistics['real_mean']) / self.statistics['real_std']
+                        imag_part = (batch_data.imag - self.statistics['imag_mean']) / self.statistics['imag_std']
                         batch_data = torch.complex(real_part, imag_part)
 
                     # Store in pre-allocated tensor
@@ -218,7 +214,7 @@ class ScenarioSplitDataset(Dataset):
             # Force cleanup after each file
             gc.collect()
 
-        print(f"Successfully loaded all {total_samples} samples for {split} split")
+        logger.info(f"Successfully loaded all {total_samples} samples for {split} split")
 
     def __len__(self) -> int:
         return self.all_data.size(0)
@@ -230,19 +226,15 @@ class ScenarioSplitDataset(Dataset):
 class OptimizedPreloadedDataset(Dataset):
     """Optimized dataset implementation for maximum training speed"""
 
-    def __init__(self, npz_files: List[str], normalize: bool = False, 
+    def __init__(self, npz_files: List[str], 
                  statistics: Optional[Dict[str, float]] = None):
         """
         Args:
             npz_files: List of NPZ file paths
-            normalize: Whether to normalize the data
-            statistics: Dict with normalization parameters
+            statistics: Dict with normalization parameters. If provided, data will be normalized.
         """
-        self.normalize = normalize
         self.statistics = statistics
-
-        if self.normalize and statistics is None:
-            raise ValueError("If normalize is True, statistics must be provided")
+        self.normalize = statistics is not None
 
         # First get total sample count and dimensions
         if not npz_files:
@@ -257,7 +249,7 @@ class OptimizedPreloadedDataset(Dataset):
                     sample_shape = data['channels'][0, 0, :, :].shape
                     self.M, self.N = sample_shape
 
-        print(f"Total samples: {total_samples}, dimensions: {self.M}x{self.N}")
+        logger.info(f"Total samples: {total_samples}, dimensions: {self.M}x{self.N}")
 
         # Pre-allocate a single contiguous tensor for all data
         # Using complex64 instead of complex128 to reduce memory usage
@@ -270,7 +262,7 @@ class OptimizedPreloadedDataset(Dataset):
         # Load all data with progress tracking
         idx = 0
         for file_idx, npz_file in enumerate(npz_files):
-            print(f"Loading file {file_idx + 1}/{len(npz_files)}: {os.path.basename(npz_file)}")
+            logger.info(f"Loading file {file_idx + 1}/{len(npz_files)}: {os.path.basename(npz_file)}")
             with np.load(npz_file) as data:
                 file_samples = len(data['channels'])
 
@@ -285,10 +277,10 @@ class OptimizedPreloadedDataset(Dataset):
                         data['channels'][batch_start:batch_end, 0, :, :].copy()
                     ).to(torch.complex64)
 
-                    # Apply normalization if needed
+                    # Apply normalization if statistics are provided
                     if self.normalize:
-                        real_part = (batch_data.real - statistics['real_mean']) / statistics['real_std']
-                        imag_part = (batch_data.imag - statistics['imag_mean']) / statistics['imag_std']
+                        real_part = (batch_data.real - self.statistics['real_mean']) / self.statistics['real_std']
+                        imag_part = (batch_data.imag - self.statistics['imag_mean']) / self.statistics['imag_std']
                         batch_data = torch.complex(real_part, imag_part)
 
                     # Store in pre-allocated tensor
@@ -298,7 +290,7 @@ class OptimizedPreloadedDataset(Dataset):
             # Force cleanup after each file
             gc.collect()
 
-        print(f"Successfully loaded all {total_samples} samples")
+        logger.info(f"Successfully loaded all {total_samples} samples")
 
     def __len__(self) -> int:
         return self.all_data.size(0)

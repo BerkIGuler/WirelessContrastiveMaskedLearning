@@ -61,7 +61,7 @@ class TestDataLoading:
     def test_optimized_preloaded_dataset(self, temp_npz_files):
         """Test OptimizedPreloadedDataset functionality."""
         # Test without normalization
-        dataset = OptimizedPreloadedDataset(temp_npz_files, normalize=False)
+        dataset = OptimizedPreloadedDataset(temp_npz_files)
         
         assert len(dataset) == 45  # 10 + 15 + 20
         assert dataset.M == 32
@@ -79,7 +79,7 @@ class TestDataLoading:
     
     def test_optimized_preloaded_dataset_with_normalization(self, temp_npz_files, statistics):
         """Test OptimizedPreloadedDataset with normalization."""
-        dataset = OptimizedPreloadedDataset(temp_npz_files, normalize=True, statistics=statistics)
+        dataset = OptimizedPreloadedDataset(temp_npz_files, statistics=statistics)
         
         assert len(dataset) == 45
         
@@ -189,7 +189,7 @@ class TestDataLoading:
     
     def test_create_efficient_dataloader(self, temp_npz_files):
         """Test efficient dataloader creation."""
-        dataset = OptimizedPreloadedDataset(temp_npz_files, normalize=False)
+        dataset = OptimizedPreloadedDataset(temp_npz_files)
         
         # Test dataloader creation
         dataloader = create_efficient_dataloader(
@@ -207,7 +207,7 @@ class TestDataLoading:
     
     def test_dataset_indexing(self, temp_npz_files):
         """Test dataset indexing and bounds."""
-        dataset = OptimizedPreloadedDataset(temp_npz_files, normalize=False)
+        dataset = OptimizedPreloadedDataset(temp_npz_files)
         
         # Test valid indices
         assert len(dataset) == 45
@@ -229,7 +229,7 @@ class TestDataLoading:
     def test_empty_dataset_error(self):
         """Test error handling for empty dataset."""
         with pytest.raises(ValueError, match="No NPZ files found"):
-            OptimizedPreloadedDataset([], normalize=False)
+                OptimizedPreloadedDataset([])
     
     def test_missing_statistics_error(self):
         """Test error handling for missing statistics."""
@@ -238,7 +238,8 @@ class TestDataLoading:
             np.savez(f.name, channels=np.random.randn(5, 1, 32, 32) + 1j * np.random.randn(5, 1, 32, 32))
         
         try:
-            with pytest.raises(ValueError, match="If normalize is True, statistics must be provided"):
-                OptimizedPreloadedDataset([f.name], normalize=True, statistics=None)
+            # Test with incomplete statistics dict - should raise KeyError when accessing missing keys
+            with pytest.raises(KeyError):
+                OptimizedPreloadedDataset([f.name], statistics={})  # Invalid statistics dict
         finally:
             os.remove(f.name) 

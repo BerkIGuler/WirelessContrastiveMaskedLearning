@@ -61,9 +61,7 @@ The package has minimal core dependencies (7 packages) with optional extras for 
 ```
 WirelessContrastiveMaskedLearning/
 ├── configs/                    # Configuration files
-│   ├── default_training.yaml   # Default training configuration
-│   ├── scenario_split_simple.yaml
-│   └── scenario_split_test.yaml
+│   └── default_training.yaml   # Default training configuration
 ├── examples/                   # Example usage
 │   └── training_demo.ipynb     # Training demonstration
 ├── contrawimae/               # Main package
@@ -116,7 +114,7 @@ Edit the configuration file or use the default:
 # configs/default_training.yaml
 model:
   type: "wimae"  # or "contramae"
-  patch_size: [1, 16]
+  patch_size: [16, 1]
   encoder_dim: 64
   encoder_layers: 12
   mask_ratio: 0.6
@@ -199,8 +197,8 @@ model:
                                    # - "contramae": Multi-task model with contrastive learning
   
   # Patch Processing
-  patch_size: [1, 16]             # Patch dimensions [height, width]
-                                   # - [1, 16]: Process in frequency domain (16 subcarriers)
+  patch_size: [16, 1]             # Patch dimensions [height, width]
+                                   # - [16, 1]: Process in frequency domain (16 subcarriers)
                                    # - Determines input chunking for transformer
                                    # - Affects memory usage and spatial relationships
   
@@ -292,11 +290,17 @@ data:
                                    # - Used when calculate_statistics: false
                                    # - Must match your dataset distribution
   
-  # Advanced Data Loading (Optional)
-  scenario_split_config: "configs/scenario_split_simple.yaml"
-                                   # - Use file patterns for train/val/test splits
-                                   # - Alternative to random val_split
-                                   # - Allows scenario-based splitting
+  # Advanced Data Loading (Optional) - Scenario-based splitting
+  scenario_split_config:           # Embedded config (preferred)
+    train_patterns:
+      - "data_[0-6]\.npz"          # Regex patterns for training files
+      - "train_.*\.npz"             # Files starting with "train_"
+    val_patterns:
+      - "data_[78]\.npz"           # Regex patterns for validation files
+      - "val_.*\.npz"              # Files starting with "val_"
+    test_patterns:
+      - "data_9\.npz"              # Regex patterns for test files
+      - "test_.*\.npz"             # Files starting with "test_"
 ```
 
 ### Training Configuration
@@ -380,10 +384,9 @@ training:
   
   # Loss Weighting (ContraWiMAE Multi-task)
   reconstruction_weight: 0.9      # Weight for reconstruction loss
-  contrastive_weight: 0.1         # Weight for contrastive loss
-                                   # - Must sum to reasonable total (typically 1.0)
+                                   # - contrastive_weight is automatically derived as (1 - reconstruction_weight)
                                    # - Higher reconstruction weight preserves base model
-                                   # - Higher contrastive weight emphasizes discriminability
+                                   # - Lower reconstruction weight emphasizes discriminability
   
   # Training Stability
   gradient_clip_val: 1.0          # Gradient clipping threshold
@@ -439,18 +442,18 @@ logging:
 For complex data organization, use scenario-based splitting:
 
 ```yaml
-# In separate config file (e.g., scenario_split_simple.yaml)
-train_patterns:
-  - "data_[0-6]\.npz"           # Regex patterns for training files
-  - "train_.*\.npz"             # Files starting with "train_"
-
-val_patterns:
-  - "data_[78]\.npz"            # Regex patterns for validation files
-  - "val_.*\.npz"               # Files starting with "val_"
-
-test_patterns:
-  - "data_9\.npz"               # Regex patterns for test files
-  - "test_.*\.npz"              # Files starting with "test_"
+# Embedded in main config file (preferred)
+data:
+  scenario_split_config:
+    train_patterns:
+      - "data_[0-6]\.npz"           # Regex patterns for training files
+      - "train_.*\.npz"             # Files starting with "train_"
+    val_patterns:
+      - "data_[78]\.npz"            # Regex patterns for validation files
+      - "val_.*\.npz"               # Files starting with "val_"
+    test_patterns:
+      - "data_9\.npz"               # Regex patterns for test files
+      - "test_.*\.npz"              # Files starting with "test_"
 ```
 
 ## Training Features

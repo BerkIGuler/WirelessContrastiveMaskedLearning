@@ -3,7 +3,7 @@
 # Model configuration
 model:
   type: "wimae"  # Options: "wimae", "contramae"
-  patch_size: [1, 16]
+  patch_size: [16, 1]
   encoder_dim: 64
   encoder_layers: 12
   encoder_nhead: 16
@@ -38,11 +38,19 @@ data:
   
   # Data loading approach:
   # Option 1: Simple approach - all NPZ files in data_dir
-  # (no scenario_split_config needed)
+  # (no scenario_split_config needed, uses val_split for random split)
   
-  # Option 2: Scenario split approach - use file patterns
-  # scenario_split_config: "configs/scenario_split_simple.yaml"
-  # scenario_split_config: "configs/scenario_split_test.yaml"
+  # Option 2: Scenario split approach - use file patterns (embedded config)
+  # scenario_split_config:
+  #   train_patterns:
+  #     - "data_[0-6]\.npz"        # Files 0-6 for training
+  #     - "train_.*\.npz"          # Any files starting with "train_"
+  #   val_patterns:
+  #     - "data_[78]\.npz"         # Files 7-8 for validation
+  #     - "val_.*\.npz"            # Any files starting with "val_"
+  #   test_patterns:
+  #     - "data_9\.npz"            # File 9 for testing
+  #     - "test_.*\.npz"           # Any files starting with "test_"
 
 # Training configuration
 training:
@@ -54,7 +62,7 @@ training:
   optimizer:
     type: "adam"
     lr: 0.0003
-    weight_decay: 0.0
+    weight_decay: 0.001
     betas: [0.9, 0.999]
   
   scheduler:
@@ -65,12 +73,12 @@ training:
   loss: "mse"
   
   # Early stopping
-  patience: 20
-  min_delta: 0.001
+  patience: 5
+  min_delta: 0.0001
   
   # Loss weights (for contrastive learning)
+  # contrastive_weight is automatically derived as (1 - reconstruction_weight)
   reconstruction_weight: 0.9
-  contrastive_weight: 0.1
   
   # Gradient clipping
   gradient_clip_val: 1.0

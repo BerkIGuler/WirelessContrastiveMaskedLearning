@@ -27,7 +27,7 @@ class MaskGenerator:
             ids_mask: Indices of masked patches
         """
         B, P, L = patches.shape
-        actual_P = P // 2
+        actual_P = P // 2  # number of complex patches
 
         # Generate random noise for ACTUAL patches
         noise = torch.rand(B, actual_P, device=patches.device, generator=self.generator)

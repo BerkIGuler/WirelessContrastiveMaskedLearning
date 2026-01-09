@@ -56,20 +56,6 @@ class TestContrastiveHead:
         norms = torch.norm(output, dim=1)
         assert torch.allclose(norms, torch.ones_like(norms), atol=1e-6)
     
-    def test_contrastive_head_mean_pooling(self, contrastive_head, sample_features):
-        """Test that contrastive head performs mean pooling."""
-        output = contrastive_head(sample_features)
-        
-        # Manually compute mean pooling
-        mean_features = torch.mean(sample_features, dim=1)  # [B, feature_dim]
-        
-        # Check that the first layer receives mean-pooled features
-        first_linear = contrastive_head.proj_head[0]
-        expected_input = first_linear(mean_features)
-        
-        # The output should be based on mean-pooled features
-        assert output.shape[0] == mean_features.shape[0]
-    
     def test_contrastive_head_normalization(self, contrastive_head, sample_features):
         """Test that output is properly normalized."""
         output = contrastive_head(sample_features)
