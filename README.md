@@ -150,7 +150,7 @@ import yaml
 with open("configs/default_training.yaml", "r") as f:
     config = yaml.safe_load(f)
 
-config["model"]["type"] = "contramae"
+config["model"]["type"] = "contrawimae"
 
 # Create and train
 trainer = ContraWiMAETrainer(config)
@@ -163,7 +163,7 @@ Load a pretrained WiMAE model into ContraWiMAE for transfer learning:
 
 ```python
 # Create ContraWiMAE trainer
-config["model"]["type"] = "contramae"
+config["model"]["type"] = "contrawimae"
 contra_trainer = ContraWiMAETrainer(config)
 
 # Load WiMAE weights (encoder/decoder), keep contrastive head random
@@ -183,9 +183,9 @@ The configuration system uses YAML files with hierarchical organization. Here's 
 ```yaml
 model:
   # Model Architecture Selection
-  type: "wimae"                    # Options: "wimae", "contramae"
+  type: "wimae"                    # Options: "wimae", "contrawimae"
                                    # - "wimae": Base masked autoencoder model
-                                   # - "contramae": Multi-task model with contrastive learning
+                                   # - "contrawimae": Multi-task model with contrastive learning
   
   # Patch Processing
   patch_size: [16, 1]             # Patch dimensions [height, width]

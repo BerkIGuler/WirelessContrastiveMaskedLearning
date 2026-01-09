@@ -134,7 +134,7 @@ class BaseTrainer:
                 mask_ratio=model_config["mask_ratio"],
                 device=self.device,
             )
-        elif model_type == "contramae":
+        elif model_type == "contrawimae":
             model = ContraWiMAE(
                 patch_size=tuple(model_config["patch_size"]),
                 encoder_dim=model_config["encoder_dim"],

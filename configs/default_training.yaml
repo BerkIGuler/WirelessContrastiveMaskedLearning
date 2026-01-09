@@ -2,7 +2,7 @@
 
 # Model configuration
 model:
-  type: "wimae"  # Options: "wimae", "contramae"
+  type: "wimae"  # Options: "wimae", "contrawimae"
   patch_size: [16, 1]
   encoder_dim: 64
   encoder_layers: 12

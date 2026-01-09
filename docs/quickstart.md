@@ -22,7 +22,7 @@ trainer.train()
 from contrawimae.training.train_contramae import ContraWiMAETrainer
 
 # Use same config, but change model type
-config["model"]["type"] = "contramae"
+config["model"]["type"] = "contrawimae"
 
 trainer = ContraWiMAETrainer(config)
 trainer.train()
