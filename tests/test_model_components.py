@@ -6,8 +6,8 @@ import pytest
 import torch
 import torch.nn as nn
 
-from contrawimae.models.base import WiMAE
-from contrawimae.models.contramae import ContraWiMAE
+from contrawimae.models.wimae import WiMAE
+from contrawimae.models.contrawimae import ContraWiMAE
 from contrawimae.models.modules.encoder import Encoder
 from contrawimae.models.modules.decoder import Decoder
 

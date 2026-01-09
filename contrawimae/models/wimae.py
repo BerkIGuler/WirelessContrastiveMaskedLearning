@@ -1,5 +1,5 @@
 """
-Base WiMAE model implementation.
+WiMAE model implementation.
 """
 
 import torch
@@ -302,4 +302,4 @@ class WiMAE(nn.Module):
             "mask_ratio": self.mask_ratio,
             "total_parameters": total_params,
             "trainable_parameters": trainable_params,
-        } 
+        }

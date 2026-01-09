@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 from typing import Optional, Tuple, Dict, Any
 
-from .base import WiMAE
+from .wimae import WiMAE
 from .modules import ContrastiveHead, apply_channel_augmentations
 
 
@@ -450,4 +450,4 @@ class ContraWiMAE(WiMAE):
             "contrastive_loss": contrastive_loss,
             "masked_loss": masked_recon_loss + contrastive_loss,  # Equal weights
             "full_loss": full_recon_loss + contrastive_loss,      # Equal weights
-        } 
+        }

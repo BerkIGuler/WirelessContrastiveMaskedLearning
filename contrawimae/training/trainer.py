@@ -18,8 +18,8 @@ try:
 except ImportError:
     SummaryWriter = None
 
-from ..models.base import WiMAE
-from ..models.contramae import ContraWiMAE
+from ..models.wimae import WiMAE
+from ..models.contrawimae import ContraWiMAE
 from .data_utils import (
     OptimizedPreloadedDataset,
     ScenarioSplitDataset,
