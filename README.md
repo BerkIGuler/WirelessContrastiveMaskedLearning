@@ -90,7 +90,7 @@ WirelessContrastiveMaskedLearning/
 
 ### 1. Prepare Your Data
 
-Organize your wireless channel data as NPZ files in the data directory:
+The complete dataset used in the paper can be accessed [here](https://huggingface.co/datasets/BerkIGuler/ContraWiMAEDataset). To use your own data, organize it as NPZ files in the data directory:
 
 ```
 data/
@@ -104,7 +104,7 @@ Each NPZ file should contain a `'channels'` key with complex-valued channel matr
 - `N`: Number of channel realizations  
 - `H, W`: Spatial dimensions (e.g., antennas, subcarriers)
 
-**Note on Repository Data**: The data files in the `data/` folder are managed using [Git LFS](https://git-lfs.github.com/) and contain only a simple sample dataset for demonstration purposes. For the complete dataset used in the paper, please send an email.
+**Note on Repository Data**: The data files in the `data/` folder are managed using [Git LFS](https://git-lfs.github.com/) and contain only a simple sample dataset for demonstration purposes.
 
 ### 2. Configure Training
 
@@ -515,23 +515,29 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 For questions, issues, or collaboration opportunities:
 
-- Create an issue on GitHub
-- Email: gulerb@uci.edu
+- Create an issue on GitHub or email the author
 
 ## Citation
 
 This repository implements the methods described in our paper. If you use this code in your research, please cite:
 
+1) [Robust Channel Representation for Wireless: A Multi-Task Masked Contrastive Approach](https://openreview.net/forum?id=KXNDs9ZGb9)
 ```bibtex
-@misc{guler2025multitaskfoundationmodelwireless,
-      title={A Multi-Task Foundation Model for Wireless Channel Representation Using Contrastive and Masked Autoencoder Learning}, 
-      author={Berkay Guler and Giovanni Geraci and Hamid Jafarkhani},
-      year={2025},
-      eprint={2505.09160},
-      archivePrefix={arXiv},
-      primaryClass={cs.LG},
-      url={https://arxiv.org/abs/2505.09160}, 
+@inproceedings{guler2025robust,
+  title={Robust Channel Representation for Wireless: A Multi-Task Masked Contrastive Approach},
+  author={Guler, Berkay and Geraci, Giovanni and Jafarkhani, Hamid},
+  booktitle={NeurIPS 2025 Workshop on AI for Next Generation Wireless (AI4NextG)},
+  year={2025},
+  url={https://openreview.net/forum?id=KXNDs9ZGb9}
 }
 ```
-**Paper 1**: [Robust Channel Representation for Wireless: A Multi-Task Masked Contrastive Approach](https://openreview.net/forum?id=KXNDs9ZGb9)
-**Paper 2**: [A Multi-Task Foundation Model for Wireless Channel Representation Using Contrastive and Masked Autoencoder Learning](https://arxiv.org/abs/2505.09160) 
+2) [A Multi-Task Foundation Model for Wireless Channel Representation Using Contrastive and Masked Autoencoder Learning](https://arxiv.org/abs/2505.09160)
+```bibtex
+@article{guler2025multitask,
+  title={A Multi-Task Foundation Model for Wireless Channel Representation Using Contrastive and Masked Autoencoder Learning},
+  author={Guler, Berkay and Geraci, Giovanni and Jafarkhani, Hamid},
+  journal={arXiv preprint arXiv:2505.09160},
+  year={2025},
+  url={https://arxiv.org/abs/2505.09160}
+}
+```
